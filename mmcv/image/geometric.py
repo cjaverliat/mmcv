@@ -17,7 +17,7 @@ except ImportError:
     Image = None
 
 
-def get_image_chw(img):
+def get_image_chw(img: np.ndarray | torch.Tensor) -> Tuple[int, int, int]:
     """Get the channel, height, and width of an image.
 
     Args:
@@ -123,13 +123,17 @@ def imresize(
         # So we need to change it to work with torchvision layout (CHW)
         resized_img = F_tv.resize_image(
             img.permute(2, 0, 1),  # HWC -> CHW
-            size,
+            size[::-1],  # (w, h) -> (h, w)
             interpolation=F_tv.InterpolationMode(interpolation),
             antialias=True,
         ).permute(1, 2, 0)  # CHW -> HWC
 
         if out is not None:
-            out.copy_(resized_img)
+            if isinstance(out, torch.Tensor):
+                out.copy_(resized_img)
+            elif isinstance(out, np.ndarray):
+                out[:] = resized_img.numpy()
+            resized_img = out
 
         if not return_scale:
             return resized_img
@@ -253,9 +257,7 @@ def imresize_like(
         tuple or ndarray: (`resized_img`, `w_scale`, `h_scale`) or
         `resized_img`.
     """
-    _, dst_img_h, dst_img_w = (
-        dst_img.shape[[2, 0, 1]] if isinstance(dst_img, np.ndarray) else dst_img.shape
-    )
+    _, dst_img_h, dst_img_w = get_image_chw(dst_img)
     return imresize(
         img, (dst_img_w, dst_img_h), return_scale, interpolation, backend=backend
     )
