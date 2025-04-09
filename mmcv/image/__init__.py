@@ -7,6 +7,7 @@ from .geometric import (cutout, imcrop, imflip, imflip_, impad,
                         imresize_to_multiple, imrotate, imshear, imtranslate,
                         rescale_size)
 from .io import imfrombytes, imread, imwrite, supported_backends, use_backend
+from .math_utils import get_rotation_matrix_2d, warp_affine, get_shear_matrix, get_translate_matrix
 from .misc import tensor2imgs
 from .photometric import (adjust_brightness, adjust_color, adjust_contrast,
                           adjust_hue, adjust_lighting, adjust_sharpness,
@@ -25,5 +26,5 @@ __all__ = [
     'tensor2imgs', 'imshear', 'imtranslate', 'adjust_color', 'imequalize',
     'adjust_brightness', 'adjust_contrast', 'lut_transform', 'clahe',
     'adjust_sharpness', 'auto_contrast', 'cutout', 'adjust_lighting',
-    'adjust_hue'
+    'adjust_hue', 'get_rotation_matrix_2d', 'warp_affine', 'get_shear_matrix', 'get_translate_matrix'
 ]
