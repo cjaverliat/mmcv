@@ -4,9 +4,80 @@ import os.path as osp
 
 import numpy as np
 import pytest
+import torch
+from mmcv.transforms import LoadAnnotations, LoadImageFromFile, LoadImage
 
-from mmcv.transforms import LoadAnnotations, LoadImageFromFile
 
+class TestLoadImage:
+    @pytest.fixture
+    def data_prefix(self):
+        return osp.join(osp.dirname(__file__), "../data")
+
+    def test_load_img_str(self, data_prefix):
+        results = osp.join(data_prefix, "color.jpg")
+        transform = LoadImage()
+        results = transform(copy.deepcopy(results))
+        assert results["img_path"] == osp.join(data_prefix, "color.jpg")
+        assert results["img"].shape == (300, 400, 3)
+        assert results["img"].dtype == torch.uint8
+        assert results["img_shape"] == (300, 400)
+        assert results["ori_shape"] == (300, 400)
+
+    def test_load_img_tensor(self):
+        img = torch.randint(0, 255, (300, 400, 3), dtype=torch.uint8)
+        results = dict(img=img)
+        transform = LoadImage()
+        results = transform(copy.deepcopy(results))
+        assert results["img"].shape == (300, 400, 3)
+        assert results["img"].dtype == torch.uint8
+
+    def test_load_img_tensor_wrong_channel_layout(self):
+        # wrong channel layout (C, H, W), should be (H, W, C)
+        img = torch.randint(0, 255, (3, 300, 400), dtype=torch.uint8)
+        results = dict(img=img)
+        transform = LoadImage()
+        with pytest.raises(Exception):
+            results = transform(copy.deepcopy(results))
+
+    def test_load_img_color(self, data_prefix):
+        results = dict(img_path=osp.join(data_prefix, "color.jpg"))
+        transform = LoadImage()
+        results = transform(copy.deepcopy(results))
+        assert results["img_path"] == osp.join(data_prefix, "color.jpg")
+        assert results["img"].shape == (300, 400, 3)
+        assert results["img"].dtype == torch.uint8
+        assert results["img_shape"] == (300, 400)
+        assert results["ori_shape"] == (300, 400)
+
+    def test_load_img_color_to_float32(self, data_prefix):
+        results = dict(img_path=osp.join(data_prefix, "color.jpg"))
+        transform = LoadImage(to_float32=True)
+        results = transform(copy.deepcopy(results))
+        assert results["img"].dtype == torch.float32
+
+    def test_load_img_unchanged(self, data_prefix):
+        # gray image
+        results = dict(img_path=osp.join(data_prefix, "grayscale.jpg"))
+        transform = LoadImage(color_type="unchanged")
+        results = transform(copy.deepcopy(results))
+        assert results["img"].shape == (300, 400)
+        assert results["img"].dtype == torch.uint8
+
+    def test_load_img_grayscale(self, data_prefix):
+        # gray image
+        results = dict(img_path=osp.join(data_prefix, "grayscale.jpg"))
+        transform = LoadImage()
+        results = transform(copy.deepcopy(results))
+        assert results["img"].shape == (300, 400, 3)
+        assert results["img"].dtype == torch.uint8
+
+    def test_load_img_ignore_empty(self, data_prefix):
+        results = dict(img_path=osp.join(data_prefix, "fake.jpg"))
+        transform = LoadImage(ignore_empty=False)
+        with pytest.raises(Exception):
+            transform(copy.deepcopy(results))
+        transform = LoadImage(ignore_empty=True)
+        assert transform(copy.deepcopy(results)) is None
 
 class TestLoadImageFromFile:
 
@@ -149,3 +220,6 @@ class TestLoadAnnotations:
             'with_label=False, with_seg=False, '
             "with_keypoints=False, imdecode_backend='cv2', "
             'backend_args=None)')
+
+if __name__ == '__main__':
+    pytest.main([__file__])
