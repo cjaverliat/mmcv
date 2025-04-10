@@ -9,7 +9,7 @@ import numpy as np
 from mmengine.utils import to_2tuple
 import warnings
 
-from .math_utils import (
+from ..utils.math import (
     get_rotation_matrix_2d,
     warp_affine,
     get_shear_matrix,
