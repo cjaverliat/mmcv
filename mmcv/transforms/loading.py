@@ -77,10 +77,7 @@ class LoadImage(BaseTransform):
         filename = results.get("img_path", None)
         img = results.get("img", None)
 
-        if filename is not None and img is not None:
-            raise ValueError("Only one of 'img' and 'img_path' should be provided.")
-
-        if filename is not None:
+        if img is None and filename is not None:
             try:
                 if self.color_type == "color":
                     img: torch.Tensor = read_image(filename, mode=ImageReadMode.RGB)
@@ -104,6 +101,9 @@ class LoadImage(BaseTransform):
                     return None
                 else:
                     raise e
+
+        if img is None and self.ignore_empty:
+            return None
 
         assert img is not None, f"failed to load image: {filename}"
 
