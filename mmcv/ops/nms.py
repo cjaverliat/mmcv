@@ -4,6 +4,7 @@ import numpy as np
 import torch
 from mmengine.utils import deprecated_api_warning
 from torch import Tensor
+from torchvision.ops import nms as nms_pt
 
 from ..utils import ext_loader
 
@@ -24,8 +25,9 @@ class NMSop(torch.autograd.Function):
             valid_inds = torch.nonzero(
                 valid_mask, as_tuple=False).squeeze(dim=1)
 
-        inds = ext_module.nms(
-            bboxes, scores, iou_threshold=float(iou_threshold), offset=offset)
+        inds = nms_pt(bboxes, scores, iou_threshold=float(iou_threshold))
+        # inds = ext_module.nms(
+        #     bboxes, scores, iou_threshold=float(iou_threshold), offset=offset)
 
         if max_num > 0:
             inds = inds[:max_num]
