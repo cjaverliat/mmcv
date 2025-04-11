@@ -152,7 +152,7 @@ def normalize_homography(
         dst_pix_trans_src_pix = torch.concatenate(
             [
                 dst_pix_trans_src_pix,
-                torch.zeros((*dst_pix_trans_src_pix.shape[:-2], 1, 3)),
+                torch.zeros((*dst_pix_trans_src_pix.shape[:-2], 1, 3), device=dst_pix_trans_src_pix.device),
             ],
             dim=-2,
         )
