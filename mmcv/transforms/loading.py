@@ -81,6 +81,8 @@ class LoadImage(BaseTransform):
             try:
                 if self.color_type == "color":
                     img: torch.Tensor = read_image(filename, mode=ImageReadMode.RGB)
+                    # RGB -> BGR
+                    img = img[..., ::-1]
                 elif self.color_type == "grayscale":
                     img: torch.Tensor = read_image(filename, mode=ImageReadMode.GRAY)
                     # To 3-channel image
