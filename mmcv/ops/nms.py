@@ -24,8 +24,10 @@ class NMSop(torch.autograd.Function):
             valid_inds = torch.nonzero(
                 valid_mask, as_tuple=False).squeeze(dim=1)
 
+        # We explicitly cast to float32 here because we might be using autocast
+        # but the nms operator expects float32 inputs
         inds = ext_module.nms(
-            bboxes, scores, iou_threshold=float(iou_threshold), offset=offset)
+            bboxes.float(), scores.float(), iou_threshold=float(iou_threshold), offset=offset)
 
         if max_num > 0:
             inds = inds[:max_num]
