@@ -329,7 +329,7 @@ def warp_affine(
         src_norm_trans_dst_norm[:, :2, :],
         (n, c, dst_h, dst_w),
         align_corners=align_corners,
-    )
+    ).to(src.device)
 
     is_byte_image = src.dtype == torch.uint8
 
