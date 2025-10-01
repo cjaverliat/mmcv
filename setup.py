@@ -502,6 +502,10 @@ setup(
     author='MMCV Contributors',
     author_email='openmmlab@gmail.com',
     install_requires=install_requires,
+    setup_requires=[
+        "numpy",
+        "torch"
+    ],
     extras_require={
         'all': parse_requirements('requirements.txt'),
         'tests': parse_requirements('requirements/test.txt'),
