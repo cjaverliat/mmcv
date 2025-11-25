@@ -1,0 +1,83 @@
+name: build windows wheel
+
+on: push
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build_windows_wheel:
+    runs-on: windows-latest
+
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"]
+        torch: ["2.6.0", "2.7.0", "2.8.0", "2.9.0"]
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install psutil
+        run: pip install psutil
+      ############################################################
+      # Install Visual Studio 2019 Build Tools (MSVC 14.2)
+      ############################################################
+      - name: Install VS 2019 Build Tools
+        shell: powershell
+        run: |
+          $url = "https://aka.ms/vs/16/release/vs_buildtools.exe"
+          Invoke-WebRequest -Uri $url -OutFile vs_buildtools.exe
+
+          Start-Process -Wait -FilePath .\vs_buildtools.exe -ArgumentList `
+            "--quiet", "--wait", "--norestart",
+            "--add", "Microsoft.VisualStudio.Workload.VCTools",
+            "--add", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+            "--add", "Microsoft.VisualStudio.Component.VC.142.x86.x64"
+
+      - name: Add VS2019 to PATH
+        shell: powershell
+        run: |
+          # Ensure MSVC 14.2 (VS 2019) is available first in PATH
+          echo "C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.2*" | Out-File -Append -FilePath $env:GITHUB_PATH
+          echo "C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\Common7\IDE\VC\VCPackages" | Out-File -Append -FilePath $env:GITHUB_PATH
+
+      ############################################################
+      # Install CUDA Toolkit
+      ############################################################
+      - name: Install CUDA Toolkit 12.4
+        shell: powershell
+        run: |
+          Invoke-WebRequest `
+            -Uri "https://developer.download.nvidia.com/compute/cuda/12.4.0/local_installers/cuda_12.4.0_551.61_windows.exe" `
+            -OutFile $installer
+
+          Start-Process -Wait -FilePath $installer -ArgumentList "-s"
+
+      - name: Add CUDA to PATH
+        shell: powershell
+        run: |
+          echo "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.4\bin" | Out-File -Append -FilePath $env:GITHUB_PATH
+          echo "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.4\libnvvp" | Out-File -Append -FilePath $env:GITHUB_PATH
+
+      - name: Verify CUDA + Compiler
+        run: |
+          nvcc --version
+          cl  # MSVC compiler
+
+      ############################################################
+      # Build wheel
+      ############################################################
+      - name: Install PyTorch
+        run: pip install torch==${{matrix.torch}} torchvision --no-cache-dir
+      - name: Build and install
+        run: |
+          pip install wheel
+          python setup.py bdist_wheel
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{matrix.torch}}
+          path: dist/
