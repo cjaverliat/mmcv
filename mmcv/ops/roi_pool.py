@@ -9,8 +9,7 @@ from torch.nn.modules.utils import _pair
 
 from ..utils import ext_loader
 
-ext_module = ext_loader.load_ext('_ext',
-                                 ['roi_pool_forward', 'roi_pool_backward'])
+ext_module = ext_loader.load_ext("_ext", ["roi_pool_forward", "roi_pool_backward"])
 
 
 class RoIPoolFunction(Function):
@@ -18,26 +17,33 @@ class RoIPoolFunction(Function):
     @staticmethod
     def symbolic(g, input, rois, output_size, spatial_scale):
         return g.op(
-            'MaxRoiPool',
+            "MaxRoiPool",
             input,
             rois,
             pooled_shape_i=output_size,
-            spatial_scale_f=spatial_scale)
+            spatial_scale_f=spatial_scale,
+        )
 
     @staticmethod
-    def forward(ctx: Any,
-                input: torch.Tensor,
-                rois: torch.Tensor,
-                output_size: Union[int, tuple],
-                spatial_scale: float = 1.0) -> torch.Tensor:
+    def forward(
+        ctx: Any,
+        input: torch.Tensor,
+        rois: torch.Tensor,
+        output_size: Union[int, tuple],
+        spatial_scale: float = 1.0,
+    ) -> torch.Tensor:
         ctx.output_size = _pair(output_size)
         ctx.spatial_scale = spatial_scale
         ctx.input_shape = input.size()
 
-        assert rois.size(1) == 5, 'RoI must be (idx, x1, y1, x2, y2)!'
+        assert rois.size(1) == 5, "RoI must be (idx, x1, y1, x2, y2)!"
 
-        output_shape = (rois.size(0), input.size(1), ctx.output_size[0],
-                        ctx.output_size[1])
+        output_shape = (
+            rois.size(0),
+            input.size(1),
+            ctx.output_size[0],
+            ctx.output_size[1],
+        )
         output = input.new_zeros(output_shape)
         argmax = input.new_zeros(output_shape, dtype=torch.int)
 
@@ -48,7 +54,8 @@ class RoIPoolFunction(Function):
             argmax,
             pooled_height=ctx.output_size[0],
             pooled_width=ctx.output_size[1],
-            spatial_scale=ctx.spatial_scale)
+            spatial_scale=ctx.spatial_scale,
+        )
 
         ctx.save_for_backward(rois, argmax)
         return output
@@ -56,7 +63,7 @@ class RoIPoolFunction(Function):
     @staticmethod
     @once_differentiable
     def backward(
-            ctx: Any, grad_output: torch.Tensor
+        ctx: Any, grad_output: torch.Tensor
     ) -> Tuple[torch.Tensor, None, None, None]:
         rois, argmax = ctx.saved_tensors
         grad_input = grad_output.new_zeros(ctx.input_shape)
@@ -68,7 +75,8 @@ class RoIPoolFunction(Function):
             grad_input,
             pooled_height=ctx.output_size[0],
             pooled_width=ctx.output_size[1],
-            spatial_scale=ctx.spatial_scale)
+            spatial_scale=ctx.spatial_scale,
+        )
 
         return grad_input, None, None, None
 
@@ -78,9 +86,7 @@ roi_pool = RoIPoolFunction.apply
 
 class RoIPool(nn.Module):
 
-    def __init__(self,
-                 output_size: Union[int, tuple],
-                 spatial_scale: float = 1.0):
+    def __init__(self, output_size: Union[int, tuple], spatial_scale: float = 1.0):
         super().__init__()
 
         self.output_size = _pair(output_size)
@@ -91,6 +97,6 @@ class RoIPool(nn.Module):
 
     def __repr__(self):
         s = self.__class__.__name__
-        s += f'(output_size={self.output_size}, '
-        s += f'spatial_scale={self.spatial_scale})'
+        s += f"(output_size={self.output_size}, "
+        s += f"spatial_scale={self.spatial_scale})"
         return s

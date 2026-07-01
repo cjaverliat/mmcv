@@ -30,10 +30,9 @@ class HSwish(nn.Module):
         return x * self.act(x + 3) / 6
 
 
-if (TORCH_VERSION == 'parrots'
-        or digit_version(TORCH_VERSION) < digit_version('1.7')):
+if TORCH_VERSION == "parrots" or digit_version(TORCH_VERSION) < digit_version("1.7"):
     # Hardswish is not supported when PyTorch version < 1.6.
     # And Hardswish in PyTorch 1.6 does not support inplace.
     MODELS.register_module(module=HSwish)
 else:
-    MODELS.register_module(module=nn.Hardswish, name='HSwish')
+    MODELS.register_module(module=nn.Hardswish, name="HSwish")

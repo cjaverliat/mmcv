@@ -6,7 +6,7 @@ from typing import Dict, Tuple, Union
 import torch.nn as nn
 from mmengine.registry import MODELS
 
-if platform.system() == 'Windows':
+if platform.system() == "Windows":
     import regex as re  # type: ignore
 else:
     import re  # type: ignore
@@ -41,23 +41,22 @@ def infer_abbr(class_type: type) -> str:
             'fancy_block'
         """
 
-        word = re.sub(r'([A-Z]+)([A-Z][a-z])', r'\1_\2', word)
-        word = re.sub(r'([a-z\d])([A-Z])', r'\1_\2', word)
-        word = word.replace('-', '_')
+        word = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1_\2", word)
+        word = re.sub(r"([a-z\d])([A-Z])", r"\1_\2", word)
+        word = word.replace("-", "_")
         return word.lower()
 
     if not inspect.isclass(class_type):
-        raise TypeError(
-            f'class_type must be a type, but got {type(class_type)}')
-    if hasattr(class_type, '_abbr_'):
+        raise TypeError(f"class_type must be a type, but got {type(class_type)}")
+    if hasattr(class_type, "_abbr_"):
         return class_type._abbr_  # type: ignore
     else:
         return camel2snack(class_type.__name__)
 
 
-def build_plugin_layer(cfg: Dict,
-                       postfix: Union[int, str] = '',
-                       **kwargs) -> Tuple[str, nn.Module]:
+def build_plugin_layer(
+    cfg: Dict, postfix: Union[int, str] = "", **kwargs
+) -> Tuple[str, nn.Module]:
     """Build plugin layer.
 
     Args:
@@ -73,12 +72,12 @@ def build_plugin_layer(cfg: Dict,
         abbreviation and postfix. The second is the created plugin layer.
     """
     if not isinstance(cfg, dict):
-        raise TypeError('cfg must be a dict')
-    if 'type' not in cfg:
+        raise TypeError("cfg must be a dict")
+    if "type" not in cfg:
         raise KeyError('the cfg dict must contain the key "type"')
     cfg_ = cfg.copy()
 
-    layer_type = cfg_.pop('type')
+    layer_type = cfg_.pop("type")
     if inspect.isclass(layer_type):
         plugin_layer = layer_type
     else:
@@ -89,8 +88,9 @@ def build_plugin_layer(cfg: Dict,
             plugin_layer = registry.get(layer_type)
         if plugin_layer is None:
             raise KeyError(
-                f'Cannot find {plugin_layer} in registry under scope '
-                f'name {registry.scope}')
+                f"Cannot find {plugin_layer} in registry under scope "
+                f"name {registry.scope}"
+            )
     abbr = infer_abbr(plugin_layer)
 
     assert isinstance(postfix, (int, str))

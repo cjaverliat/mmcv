@@ -60,33 +60,30 @@ class Conv2dRFSearchOp(BaseConvRFSearchOp):
             Defaults to True.
     """
 
-    def __init__(self,
-                 op_layer: nn.Module,
-                 global_config: dict,
-                 verbose: bool = True):
+    def __init__(self, op_layer: nn.Module, global_config: dict, verbose: bool = True):
         super().__init__(op_layer, global_config)
-        assert global_config is not None, 'global_config is None'
-        self.num_branches = global_config['num_branches']
+        assert global_config is not None, "global_config is None"
+        self.num_branches = global_config["num_branches"]
         assert self.num_branches in [2, 3]
         self.verbose = verbose
         init_dilation = op_layer.dilation
         self.dilation_rates = expand_rates(init_dilation, global_config)
-        if self.op_layer.kernel_size[
-                0] == 1 or self.op_layer.kernel_size[0] % 2 == 0:
-            self.dilation_rates = [(op_layer.dilation[0], r[1])
-                                   for r in self.dilation_rates]
-        if self.op_layer.kernel_size[
-                1] == 1 or self.op_layer.kernel_size[1] % 2 == 0:
-            self.dilation_rates = [(r[0], op_layer.dilation[1])
-                                   for r in self.dilation_rates]
+        if self.op_layer.kernel_size[0] == 1 or self.op_layer.kernel_size[0] % 2 == 0:
+            self.dilation_rates = [
+                (op_layer.dilation[0], r[1]) for r in self.dilation_rates
+            ]
+        if self.op_layer.kernel_size[1] == 1 or self.op_layer.kernel_size[1] % 2 == 0:
+            self.dilation_rates = [
+                (r[0], op_layer.dilation[1]) for r in self.dilation_rates
+            ]
 
         self.branch_weights = nn.Parameter(torch.Tensor(self.num_branches))
         if self.verbose:
-            print_log(f'Expand as {self.dilation_rates}', 'current')
-        nn.init.constant_(self.branch_weights, global_config['init_alphas'])
+            print_log(f"Expand as {self.dilation_rates}", "current")
+        nn.init.constant_(self.branch_weights, global_config["init_alphas"])
 
     def forward(self, input: Tensor) -> Tensor:
-        norm_w = self.normlize(self.branch_weights[:len(self.dilation_rates)])
+        norm_w = self.normlize(self.branch_weights[: len(self.dilation_rates)])
         if len(self.dilation_rates) == 1:
             outputs = [
                 nn.functional.conv2d(
@@ -109,7 +106,9 @@ class Conv2dRFSearchOp(BaseConvRFSearchOp):
                     padding=self.get_padding(r),
                     dilation=r,
                     groups=self.op_layer.groups,
-                ) * norm_w[i] for i, r in enumerate(self.dilation_rates)
+                )
+                * norm_w[i]
+                for i, r in enumerate(self.dilation_rates)
             ]
         output = outputs[0]
         for i in range(1, len(self.dilation_rates)):
@@ -118,12 +117,14 @@ class Conv2dRFSearchOp(BaseConvRFSearchOp):
 
     def estimate_rates(self) -> None:
         """Estimate new dilation rate based on trained branch_weights."""
-        norm_w = self.normlize(self.branch_weights[:len(self.dilation_rates)])
+        norm_w = self.normlize(self.branch_weights[: len(self.dilation_rates)])
         if self.verbose:
             print_log(
-                'Estimate dilation {} with weight {}.'.format(
-                    self.dilation_rates,
-                    norm_w.detach().cpu().numpy().tolist()), 'current')
+                "Estimate dilation {} with weight {}.".format(
+                    self.dilation_rates, norm_w.detach().cpu().numpy().tolist()
+                ),
+                "current",
+            )
 
         sum0, sum1, w_sum = 0, 0, 0
         for i in range(len(self.dilation_rates)):
@@ -132,38 +133,43 @@ class Conv2dRFSearchOp(BaseConvRFSearchOp):
             w_sum += norm_w[i].item()
         estimated = [
             np.clip(
-                int(round(sum0 / w_sum)), self.global_config['mmin'],
-                self.global_config['mmax']).item(),
+                int(round(sum0 / w_sum)),
+                self.global_config["mmin"],
+                self.global_config["mmax"],
+            ).item(),
             np.clip(
-                int(round(sum1 / w_sum)), self.global_config['mmin'],
-                self.global_config['mmax']).item()
+                int(round(sum1 / w_sum)),
+                self.global_config["mmin"],
+                self.global_config["mmax"],
+            ).item(),
         ]
         self.op_layer.dilation = tuple(estimated)
         self.op_layer.padding = self.get_padding(self.op_layer.dilation)
         self.dilation_rates = [tuple(estimated)]
         if self.verbose:
-            print_log(f'Estimate as {tuple(estimated)}', 'current')
+            print_log(f"Estimate as {tuple(estimated)}", "current")
 
     def expand_rates(self) -> None:
         """Expand dilation rate."""
         dilation = self.op_layer.dilation
         dilation_rates = expand_rates(dilation, self.global_config)
-        if self.op_layer.kernel_size[
-                0] == 1 or self.op_layer.kernel_size[0] % 2 == 0:
+        if self.op_layer.kernel_size[0] == 1 or self.op_layer.kernel_size[0] % 2 == 0:
             dilation_rates = [(dilation[0], r[1]) for r in dilation_rates]
-        if self.op_layer.kernel_size[
-                1] == 1 or self.op_layer.kernel_size[1] % 2 == 0:
+        if self.op_layer.kernel_size[1] == 1 or self.op_layer.kernel_size[1] % 2 == 0:
             dilation_rates = [(r[0], dilation[1]) for r in dilation_rates]
 
         self.dilation_rates = copy.deepcopy(dilation_rates)
         if self.verbose:
-            print_log(f'Expand as {self.dilation_rates}', 'current')
-        nn.init.constant_(self.branch_weights,
-                          self.global_config['init_alphas'])
+            print_log(f"Expand as {self.dilation_rates}", "current")
+        nn.init.constant_(self.branch_weights, self.global_config["init_alphas"])
 
     def get_padding(self, dilation) -> tuple:
-        padding = (get_single_padding(self.op_layer.kernel_size[0],
-                                      self.op_layer.stride[0], dilation[0]),
-                   get_single_padding(self.op_layer.kernel_size[1],
-                                      self.op_layer.stride[1], dilation[1]))
+        padding = (
+            get_single_padding(
+                self.op_layer.kernel_size[0], self.op_layer.stride[0], dilation[0]
+            ),
+            get_single_padding(
+                self.op_layer.kernel_size[1], self.op_layer.stride[1], dilation[1]
+            ),
+        )
         return padding

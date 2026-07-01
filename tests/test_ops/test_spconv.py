@@ -4,24 +4,25 @@ import torch
 from torch import nn
 
 from mmcv.cnn import build_conv_layer, build_norm_layer
-from mmcv.ops import (SparseConvTensor, SparseInverseConv3d, SparseSequential,
-                      SubMConv3d)
+from mmcv.ops import SparseConvTensor, SparseInverseConv3d, SparseSequential, SubMConv3d
 
-if torch.__version__ == 'parrots':
-    pytest.skip('not supported in parrots now', allow_module_level=True)
+if torch.__version__ == "parrots":
+    pytest.skip("not supported in parrots now", allow_module_level=True)
 
 from mmcv.utils import IS_CUDA_AVAILABLE, IS_MLU_AVAILABLE, IS_MUSA_AVAILABLE
 
 
-def make_sparse_convmodule(in_channels,
-                           out_channels,
-                           kernel_size,
-                           indice_key,
-                           stride=1,
-                           padding=0,
-                           conv_type='SubMConv3d',
-                           norm_cfg=None,
-                           order=('conv', 'norm', 'act')):
+def make_sparse_convmodule(
+    in_channels,
+    out_channels,
+    kernel_size,
+    indice_key,
+    stride=1,
+    padding=0,
+    conv_type="SubMConv3d",
+    norm_cfg=None,
+    order=("conv", "norm", "act"),
+):
     """Make sparse convolution module.
 
     Args:
@@ -41,16 +42,17 @@ def make_sparse_convmodule(in_channels,
         spconv.SparseSequential: sparse convolution module.
     """
     assert isinstance(order, tuple) and len(order) <= 3
-    assert set(order) | {'conv', 'norm', 'act'} == {'conv', 'norm', 'act'}
+    assert set(order) | {"conv", "norm", "act"} == {"conv", "norm", "act"}
 
     conv_cfg = dict(type=conv_type, indice_key=indice_key)
 
     layers = list()
     for layer in order:
-        if layer == 'conv':
+        if layer == "conv":
             if conv_type not in [
-                    'SparseInverseConv3d', 'SparseInverseConv2d',
-                    'SparseInverseConv1d'
+                "SparseInverseConv3d",
+                "SparseInverseConv2d",
+                "SparseInverseConv1d",
             ]:
                 layers.append(
                     build_conv_layer(
@@ -60,69 +62,82 @@ def make_sparse_convmodule(in_channels,
                         kernel_size,
                         stride=stride,
                         padding=padding,
-                        bias=False))
+                        bias=False,
+                    )
+                )
             else:
                 layers.append(
                     build_conv_layer(
-                        conv_cfg,
-                        in_channels,
-                        out_channels,
-                        kernel_size,
-                        bias=False))
-        elif layer == 'norm':
+                        conv_cfg, in_channels, out_channels, kernel_size, bias=False
+                    )
+                )
+        elif layer == "norm":
             layers.append(build_norm_layer(norm_cfg, out_channels)[1])
-        elif layer == 'act':
+        elif layer == "act":
             layers.append(nn.ReLU(inplace=True))
 
     layers = SparseSequential(*layers)
     return layers
 
 
-@pytest.mark.parametrize('device', [
-    pytest.param(
-        'cuda',
-        marks=pytest.mark.skipif(
-            not IS_CUDA_AVAILABLE, reason='requires CUDA support')),
-    pytest.param(
-        'mlu',
-        marks=pytest.mark.skipif(
-            not IS_MLU_AVAILABLE, reason='requires MLU support')),
-    pytest.param(
-        'musa',
-        marks=pytest.mark.skipif(
-            not IS_MUSA_AVAILABLE, reason='requires MUSA support')),
-])
+@pytest.mark.parametrize(
+    "device",
+    [
+        pytest.param(
+            "cuda",
+            marks=pytest.mark.skipif(
+                not IS_CUDA_AVAILABLE, reason="requires CUDA support"
+            ),
+        ),
+        pytest.param(
+            "mlu",
+            marks=pytest.mark.skipif(
+                not IS_MLU_AVAILABLE, reason="requires MLU support"
+            ),
+        ),
+        pytest.param(
+            "musa",
+            marks=pytest.mark.skipif(
+                not IS_MUSA_AVAILABLE, reason="requires MUSA support"
+            ),
+        ),
+    ],
+)
 def test_make_sparse_convmodule(device):
     if IS_CUDA_AVAILABLE:
         torch.cuda.empty_cache()
     elif IS_MUSA_AVAILABLE:
         torch.musa.empty_cache()
-    voxel_features = torch.tensor([[6.56126, 0.9648336, -1.7339306, 0.315],
-                                   [6.8162713, -2.480431, -1.3616394, 0.36],
-                                   [11.643568, -4.744306, -1.3580885, 0.16],
-                                   [23.482342, 6.5036807, 0.5806964, 0.35]],
-                                  dtype=torch.float32,
-                                  device=device)  # n, point_features
+    voxel_features = torch.tensor(
+        [
+            [6.56126, 0.9648336, -1.7339306, 0.315],
+            [6.8162713, -2.480431, -1.3616394, 0.36],
+            [11.643568, -4.744306, -1.3580885, 0.16],
+            [23.482342, 6.5036807, 0.5806964, 0.35],
+        ],
+        dtype=torch.float32,
+        device=device,
+    )  # n, point_features
     coordinates = torch.tensor(
-        [[0, 12, 819, 131], [0, 16, 750, 136], [1, 16, 705, 232],
-         [1, 35, 930, 469]],
+        [[0, 12, 819, 131], [0, 16, 750, 136], [1, 16, 705, 232], [1, 35, 930, 469]],
         dtype=torch.int32,
-        device=device)  # n, 4(batch, ind_x, ind_y, ind_z)
+        device=device,
+    )  # n, 4(batch, ind_x, ind_y, ind_z)
 
     # test
-    input_sp_tensor = SparseConvTensor(voxel_features, coordinates,
-                                       [41, 1600, 1408], 2)
+    input_sp_tensor = SparseConvTensor(voxel_features, coordinates, [41, 1600, 1408], 2)
 
     sparse_block0 = make_sparse_convmodule(
         4,
         16,
         3,
-        'test0',
+        "test0",
         stride=1,
         padding=0,
-        conv_type='SubMConv3d',
-        norm_cfg=dict(type='BN1d', eps=1e-3, momentum=0.01),
-        order=('conv', 'norm', 'act')).to(device)
+        conv_type="SubMConv3d",
+        norm_cfg=dict(type="BN1d", eps=1e-3, momentum=0.01),
+        order=("conv", "norm", "act"),
+    ).to(device)
     assert isinstance(sparse_block0[0], SubMConv3d)
     assert sparse_block0[0].in_channels == 4
     assert sparse_block0[0].out_channels == 16
@@ -136,17 +151,18 @@ def test_make_sparse_convmodule(device):
     assert out_features.features.shape == torch.Size([4, 16])
 
     # device == mlu: not support inverse==1 yet
-    if device != 'mlu':
+    if device != "mlu":
         sparse_block1 = make_sparse_convmodule(
             4,
             16,
             3,
-            'test1',
+            "test1",
             stride=1,
             padding=0,
-            conv_type='SparseInverseConv3d',
-            norm_cfg=dict(type='BN1d', eps=1e-3, momentum=0.01),
-            order=('norm', 'act', 'conv')).to(device)
+            conv_type="SparseInverseConv3d",
+            norm_cfg=dict(type="BN1d", eps=1e-3, momentum=0.01),
+            order=("norm", "act", "conv"),
+        ).to(device)
         assert isinstance(sparse_block1[2], SparseInverseConv3d)
         assert isinstance(sparse_block1[0], torch.nn.BatchNorm1d)
         assert isinstance(sparse_block1[1], torch.nn.ReLU)

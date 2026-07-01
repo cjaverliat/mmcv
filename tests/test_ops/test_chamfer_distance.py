@@ -11,8 +11,8 @@ def chamfer_distance_forward_groundtruth(xyz1, xyz2, dtype):
     bs, ns, ss = xyz1.shape
     dist1 = np.zeros((bs, ns)).astype(torch_to_np_type(dtype))
     dist2 = np.zeros((bs, ns)).astype(torch_to_np_type(dtype))
-    idx1 = np.zeros((bs, ns)).astype('int32')
-    idx2 = np.zeros((bs, ns)).astype('int32')
+    idx1 = np.zeros((bs, ns)).astype("int32")
+    idx2 = np.zeros((bs, ns)).astype("int32")
     for b1 in range(bs):
         for n1 in range(ns):
             x1, y1 = xyz1[b1][n1]
@@ -43,29 +43,36 @@ def torch_to_np_type(dtype):
         return np.float32
 
 
-@pytest.mark.parametrize('device', [
-    pytest.param(
-        'cuda',
-        marks=pytest.mark.skipif(
-            not IS_CUDA_AVAILABLE, reason='requires CUDA support')),
-    pytest.param(
-        'npu',
-        marks=pytest.mark.skipif(
-            not IS_NPU_AVAILABLE, reason='requires NPU support')),
-    pytest.param(
-        'musa',
-        marks=pytest.mark.skipif(
-            not IS_MUSA_AVAILABLE, reason='requires MUSA support'))
-])
-@pytest.mark.parametrize('dtype', [torch.half, torch.float32])
-@pytest.mark.parametrize('shape', [(2, 600, 2), (1, 1, 2), (7, 7, 2)])
+@pytest.mark.parametrize(
+    "device",
+    [
+        pytest.param(
+            "cuda",
+            marks=pytest.mark.skipif(
+                not IS_CUDA_AVAILABLE, reason="requires CUDA support"
+            ),
+        ),
+        pytest.param(
+            "npu",
+            marks=pytest.mark.skipif(
+                not IS_NPU_AVAILABLE, reason="requires NPU support"
+            ),
+        ),
+        pytest.param(
+            "musa",
+            marks=pytest.mark.skipif(
+                not IS_MUSA_AVAILABLE, reason="requires MUSA support"
+            ),
+        ),
+    ],
+)
+@pytest.mark.parametrize("dtype", [torch.half, torch.float32])
+@pytest.mark.parametrize("shape", [(2, 600, 2), (1, 1, 2), (7, 7, 2)])
 def test_chamfer_distance_npu_dynamic_shape(dtype, device, shape):
     bs = shape[0]
     ns = shape[1]
-    xyz1 = np.random.uniform(-10.0, 10.0,
-                             (bs, ns, 2)).astype(torch_to_np_type(dtype))
-    xyz2 = np.random.uniform(-10.0, 10.0,
-                             (bs, ns, 2)).astype(torch_to_np_type(dtype))
+    xyz1 = np.random.uniform(-10.0, 10.0, (bs, ns, 2)).astype(torch_to_np_type(dtype))
+    xyz2 = np.random.uniform(-10.0, 10.0, (bs, ns, 2)).astype(torch_to_np_type(dtype))
     xyz1_npu = torch.tensor(xyz1, dtype=dtype).to(device)
     xyz2_npu = torch.tensor(xyz2, dtype=dtype).to(device)
     expected_output = chamfer_distance_forward_groundtruth(xyz1, xyz2, dtype)

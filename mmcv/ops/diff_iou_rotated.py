@@ -10,8 +10,7 @@ from torch.autograd import Function
 from ..utils import ext_loader
 
 EPSILON = 1e-8
-ext_module = ext_loader.load_ext('_ext',
-                                 ['diff_iou_rotated_sort_vertices_forward'])
+ext_module = ext_loader.load_ext("_ext", ["diff_iou_rotated_sort_vertices_forward"])
 
 
 class SortVertices(Function):
@@ -19,8 +18,9 @@ class SortVertices(Function):
     @staticmethod
     def forward(ctx, vertices, mask, num_valid):
         idx = ext_module.diff_iou_rotated_sort_vertices_forward(
-            vertices, mask, num_valid)
-        if torch.__version__ != 'parrots':
+            vertices, mask, num_valid
+        )
+        if torch.__version__ != "parrots":
             ctx.mark_non_differentiable(idx)
         return idx
 
@@ -29,8 +29,7 @@ class SortVertices(Function):
         return ()
 
 
-def box_intersection(corners1: Tensor,
-                     corners2: Tensor) -> Tuple[Tensor, Tensor]:
+def box_intersection(corners1: Tensor, corners2: Tensor) -> Tuple[Tensor, Tensor]:
     """Find intersection points of rectangles.
     Convention: if two edges are collinear, there is no intersection point.
 
@@ -57,17 +56,16 @@ def box_intersection(corners1: Tensor,
     numerator = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
     denumerator_t = (x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)
     t = denumerator_t / numerator
-    t[numerator == .0] = -1.
+    t[numerator == 0.0] = -1.0
     mask_t = (t > 0) & (t < 1)  # intersection on line segment 1
     denumerator_u = (x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)
     u = -denumerator_u / numerator
-    u[numerator == .0] = -1.
+    u[numerator == 0.0] = -1.0
     mask_u = (u > 0) & (u < 1)  # intersection on line segment 2
     mask = mask_t * mask_u
     # overwrite with EPSILON. otherwise numerically unstable
     t = denumerator_t / (numerator + EPSILON)
-    intersections = torch.stack([x1 + t * (x2 - x1), y1 + t * (y2 - y1)],
-                                dim=-1)
+    intersections = torch.stack([x1 + t * (x2 - x1), y1 + t * (y2 - y1)], dim=-1)
     intersections = intersections * mask.float().unsqueeze(-1)
     return intersections, mask
 
@@ -98,10 +96,8 @@ def box1_in_box2(corners1: Tensor, corners2: Tensor) -> Tensor:
     norm_ad = torch.sum(ad * ad, dim=-1)  # (B, N, 1)
     # NOTE: the expression looks ugly but is stable if the two boxes
     # are exactly the same also stable with different scale of bboxes
-    cond1 = (prod_ab / norm_ab > -1e-6) * (prod_ab / norm_ab < 1 + 1e-6
-                                           )  # (B, N, 4)
-    cond2 = (prod_ad / norm_ad > -1e-6) * (prod_ad / norm_ad < 1 + 1e-6
-                                           )  # (B, N, 4)
+    cond1 = (prod_ab / norm_ab > -1e-6) * (prod_ab / norm_ab < 1 + 1e-6)  # (B, N, 4)
+    cond2 = (prod_ad / norm_ad > -1e-6) * (prod_ad / norm_ad < 1 + 1e-6)  # (B, N, 4)
     return cond1 * cond2
 
 
@@ -122,9 +118,14 @@ def box_in_box(corners1: Tensor, corners2: Tensor) -> Tuple[Tensor, Tensor]:
     return c1_in_2, c2_in_1
 
 
-def build_vertices(corners1: Tensor, corners2: Tensor, c1_in_2: Tensor,
-                   c2_in_1: Tensor, intersections: Tensor,
-                   valid_mask: Tensor) -> Tuple[Tensor, Tensor]:
+def build_vertices(
+    corners1: Tensor,
+    corners2: Tensor,
+    c1_in_2: Tensor,
+    c2_in_1: Tensor,
+    intersections: Tensor,
+    valid_mask: Tensor,
+) -> Tuple[Tensor, Tensor]:
     """Find vertices of intersection area.
 
     Args:
@@ -146,9 +147,7 @@ def build_vertices(corners1: Tensor, corners2: Tensor, c1_in_2: Tensor,
     B = corners1.size()[0]
     N = corners1.size()[1]
     # (B, N, 4 + 4 + 16, 2)
-    vertices = torch.cat(
-        [corners1, corners2,
-         intersections.view([B, N, -1, 2])], dim=2)
+    vertices = torch.cat([corners1, corners2, intersections.view([B, N, -1, 2])], dim=2)
     # Bool (B, N, 4 + 4 + 16)
     mask = torch.cat([c1_in_2, c2_in_1, valid_mask.view([B, N, -1])], dim=2)
     return vertices, mask
@@ -175,14 +174,13 @@ def sort_indices(vertices: Tensor, mask: Tensor) -> Tensor:
     """
     num_valid = torch.sum(mask.int(), dim=2).int()  # (B, N)
     mean = torch.sum(
-        vertices * mask.float().unsqueeze(-1), dim=2,
-        keepdim=True) / num_valid.unsqueeze(-1).unsqueeze(-1)
+        vertices * mask.float().unsqueeze(-1), dim=2, keepdim=True
+    ) / num_valid.unsqueeze(-1).unsqueeze(-1)
     vertices_normalized = vertices - mean  # normalization makes sorting easier
     return SortVertices.apply(vertices_normalized, mask, num_valid).long()
 
 
-def calculate_area(idx_sorted: Tensor,
-                   vertices: Tensor) -> Tuple[Tensor, Tensor]:
+def calculate_area(idx_sorted: Tensor, vertices: Tensor) -> Tuple[Tensor, Tensor]:
     """Calculate area of intersection.
 
     Args:
@@ -196,15 +194,18 @@ def calculate_area(idx_sorted: Tensor,
     """
     idx_ext = idx_sorted.unsqueeze(-1).repeat([1, 1, 1, 2])
     selected = torch.gather(vertices, 2, idx_ext)
-    total = selected[:, :, 0:-1, 0] * selected[:, :, 1:, 1] \
+    total = (
+        selected[:, :, 0:-1, 0] * selected[:, :, 1:, 1]
         - selected[:, :, 0:-1, 1] * selected[:, :, 1:, 0]
+    )
     total = torch.sum(total, dim=2)
     area = torch.abs(total) / 2
     return area, selected
 
 
-def oriented_box_intersection_2d(corners1: Tensor,
-                                 corners2: Tensor) -> Tuple[Tensor, Tensor]:
+def oriented_box_intersection_2d(
+    corners1: Tensor, corners2: Tensor
+) -> Tuple[Tensor, Tensor]:
     """Calculate intersection area of 2d rotated boxes.
 
     Args:
@@ -218,8 +219,9 @@ def oriented_box_intersection_2d(corners1: Tensor,
     """
     intersections, valid_mask = box_intersection(corners1, corners2)
     c12, c21 = box_in_box(corners1, corners2)
-    vertices, mask = build_vertices(corners1, corners2, c12, c21,
-                                    intersections, valid_mask)
+    vertices, mask = build_vertices(
+        corners1, corners2, c12, c21, intersections, valid_mask
+    )
     sorted_indices = sort_indices(vertices, mask)
     return calculate_area(sorted_indices, vertices)
 
@@ -264,8 +266,7 @@ def diff_iou_rotated_2d(box1: Tensor, box2: Tensor) -> Tensor:
     """
     corners1 = box2corners(box1)
     corners2 = box2corners(box2)
-    intersection, _ = oriented_box_intersection_2d(corners1,
-                                                   corners2)  # (B, N)
+    intersection, _ = oriented_box_intersection_2d(corners1, corners2)  # (B, N)
     area1 = box1[:, :, 2] * box1[:, :, 3]
     area2 = box2[:, :, 2] * box2[:, :, 3]
     union = area1 + area2 - intersection
@@ -292,8 +293,7 @@ def diff_iou_rotated_3d(box3d1: Tensor, box3d2: Tensor) -> Tensor:
     zmin1 = box3d1[..., 2] - box3d1[..., 5] * 0.5
     zmax2 = box3d2[..., 2] + box3d2[..., 5] * 0.5
     zmin2 = box3d2[..., 2] - box3d2[..., 5] * 0.5
-    z_overlap = (torch.min(zmax1, zmax2) -
-                 torch.max(zmin1, zmin2)).clamp_(min=0.)
+    z_overlap = (torch.min(zmax1, zmax2) - torch.max(zmin1, zmin2)).clamp_(min=0.0)
     intersection_3d = intersection * z_overlap
     volume1 = box3d1[..., 3] * box3d1[..., 4] * box3d1[..., 5]
     volume2 = box3d2[..., 3] * box3d2[..., 4] * box3d2[..., 5]

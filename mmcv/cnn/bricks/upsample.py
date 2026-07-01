@@ -8,11 +8,11 @@ import torch.nn.functional as F
 from mmengine.model import xavier_init
 from mmengine.registry import MODELS
 
-MODELS.register_module('nearest', module=nn.Upsample)
-MODELS.register_module('bilinear', module=nn.Upsample)
+MODELS.register_module("nearest", module=nn.Upsample)
+MODELS.register_module("bilinear", module=nn.Upsample)
 
 
-@MODELS.register_module(name='pixel_shuffle')
+@MODELS.register_module(name="pixel_shuffle")
 class PixelShufflePack(nn.Module):
     """Pixel Shuffle upsample layer.
 
@@ -27,8 +27,13 @@ class PixelShufflePack(nn.Module):
             channels.
     """
 
-    def __init__(self, in_channels: int, out_channels: int, scale_factor: int,
-                 upsample_kernel: int):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        scale_factor: int,
+        upsample_kernel: int,
+    ):
         super().__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
@@ -38,11 +43,12 @@ class PixelShufflePack(nn.Module):
             self.in_channels,
             self.out_channels * scale_factor * scale_factor,
             self.upsample_kernel,
-            padding=(self.upsample_kernel - 1) // 2)
+            padding=(self.upsample_kernel - 1) // 2,
+        )
         self.init_weights()
 
     def init_weights(self):
-        xavier_init(self.upsample_conv, distribution='uniform')
+        xavier_init(self.upsample_conv, distribution="uniform")
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.upsample_conv(x)
@@ -69,13 +75,12 @@ def build_upsample_layer(cfg: Dict, *args, **kwargs) -> nn.Module:
         nn.Module: Created upsample layer.
     """
     if not isinstance(cfg, dict):
-        raise TypeError(f'cfg must be a dict, but got {type(cfg)}')
-    if 'type' not in cfg:
-        raise KeyError(
-            f'the cfg dict must contain the key "type", but got {cfg}')
+        raise TypeError(f"cfg must be a dict, but got {type(cfg)}")
+    if "type" not in cfg:
+        raise KeyError(f'the cfg dict must contain the key "type", but got {cfg}')
     cfg_ = cfg.copy()
 
-    layer_type = cfg_.pop('type')
+    layer_type = cfg_.pop("type")
 
     if inspect.isclass(layer_type):
         upsample = layer_type
@@ -86,9 +91,11 @@ def build_upsample_layer(cfg: Dict, *args, **kwargs) -> nn.Module:
         with MODELS.switch_scope_and_registry(None) as registry:
             upsample = registry.get(layer_type)
         if upsample is None:
-            raise KeyError(f'Cannot find {upsample} in registry under scope '
-                           f'name {registry.scope}')
+            raise KeyError(
+                f"Cannot find {upsample} in registry under scope "
+                f"name {registry.scope}"
+            )
         if upsample is nn.Upsample:
-            cfg_['mode'] = layer_type
+            cfg_["mode"] = layer_type
     layer = upsample(*args, **kwargs, **cfg_)
     return layer

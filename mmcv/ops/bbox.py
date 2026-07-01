@@ -3,15 +3,17 @@ import torch
 
 from ..utils import ext_loader
 
-ext_module = ext_loader.load_ext('_ext', ['bbox_overlaps'])
+ext_module = ext_loader.load_ext("_ext", ["bbox_overlaps"])
 
 
-def _bbox_overlaps_cpu(bboxes1: torch.Tensor,
-                       bboxes2: torch.Tensor,
-                       mode: str = 'iou',
-                       aligned: bool = False,
-                       offset: int = 0) -> torch.Tensor:
-    assert mode in ['iou', 'iof']
+def _bbox_overlaps_cpu(
+    bboxes1: torch.Tensor,
+    bboxes2: torch.Tensor,
+    mode: str = "iou",
+    aligned: bool = False,
+    offset: int = 0,
+) -> torch.Tensor:
+    assert mode in ["iou", "iof"]
 
     if aligned:
         lt = torch.max(bboxes1[:, :2], bboxes2[:, :2])  # [rows, 2]
@@ -20,11 +22,13 @@ def _bbox_overlaps_cpu(bboxes1: torch.Tensor,
         wh = (rb - lt + offset).clamp(min=0)  # [rows, 2]
         overlap = wh[:, 0] * wh[:, 1]
         area1 = (bboxes1[:, 2] - bboxes1[:, 0] + offset) * (
-            bboxes1[:, 3] - bboxes1[:, 1] + offset)
+            bboxes1[:, 3] - bboxes1[:, 1] + offset
+        )
 
-        if mode == 'iou':
+        if mode == "iou":
             area2 = (bboxes2[:, 2] - bboxes2[:, 0] + offset) * (
-                bboxes2[:, 3] - bboxes2[:, 1] + offset)
+                bboxes2[:, 3] - bboxes2[:, 1] + offset
+            )
             ious = overlap / (area1 + area2 - overlap)
         else:
             ious = overlap / area1
@@ -35,11 +39,13 @@ def _bbox_overlaps_cpu(bboxes1: torch.Tensor,
         wh = (rb - lt + offset).clamp(min=0)  # [rows, cols, 2]
         overlap = wh[:, :, 0] * wh[:, :, 1]
         area1 = (bboxes1[:, 2] - bboxes1[:, 0] + offset) * (
-            bboxes1[:, 3] - bboxes1[:, 1] + offset)
+            bboxes1[:, 3] - bboxes1[:, 1] + offset
+        )
 
-        if mode == 'iou':
+        if mode == "iou":
             area2 = (bboxes2[:, 2] - bboxes2[:, 0] + offset) * (
-                bboxes2[:, 3] - bboxes2[:, 1] + offset)
+                bboxes2[:, 3] - bboxes2[:, 1] + offset
+            )
             ious = overlap / (area1[:, None] + area2 - overlap)
         else:
             ious = overlap / (area1[:, None])
@@ -47,11 +53,13 @@ def _bbox_overlaps_cpu(bboxes1: torch.Tensor,
     return ious
 
 
-def bbox_overlaps(bboxes1: torch.Tensor,
-                  bboxes2: torch.Tensor,
-                  mode: str = 'iou',
-                  aligned: bool = False,
-                  offset: int = 0) -> torch.Tensor:
+def bbox_overlaps(
+    bboxes1: torch.Tensor,
+    bboxes2: torch.Tensor,
+    mode: str = "iou",
+    aligned: bool = False,
+    offset: int = 0,
+) -> torch.Tensor:
     """Calculate overlap between two set of bboxes.
 
     If ``aligned`` is ``False``, then calculate the ious between each bbox
@@ -96,12 +104,12 @@ def bbox_overlaps(bboxes1: torch.Tensor,
         >>> assert tuple(bbox_overlaps(empty, empty).shape) == (0, 0)
     """
 
-    mode_dict = {'iou': 0, 'iof': 1}
+    mode_dict = {"iou": 0, "iof": 1}
     assert mode in mode_dict.keys()
     mode_flag = mode_dict[mode]
     # Either the boxes are empty or the length of boxes' last dimension is 4
-    assert (bboxes1.size(-1) == 4 or bboxes1.size(0) == 0)
-    assert (bboxes2.size(-1) == 4 or bboxes2.size(0) == 0)
+    assert bboxes1.size(-1) == 4 or bboxes1.size(0) == 0
+    assert bboxes2.size(-1) == 4 or bboxes2.size(0) == 0
     assert offset == 1 or offset == 0
 
     rows = bboxes1.size(0)
@@ -116,11 +124,13 @@ def bbox_overlaps(bboxes1: torch.Tensor,
     if rows * cols == 0:
         return ious
 
-    if bboxes1.device.type == 'cpu' and torch.__version__ == 'parrots':
+    if bboxes1.device.type == "cpu" and torch.__version__ == "parrots":
         return _bbox_overlaps_cpu(
-            bboxes1, bboxes2, mode=mode, aligned=aligned, offset=offset)
+            bboxes1, bboxes2, mode=mode, aligned=aligned, offset=offset
+        )
 
     ext_module.bbox_overlaps(
-        bboxes1, bboxes2, ious, mode=mode_flag, aligned=aligned, offset=offset)
+        bboxes1, bboxes2, ious, mode=mode_flag, aligned=aligned, offset=offset
+    )
 
     return ious

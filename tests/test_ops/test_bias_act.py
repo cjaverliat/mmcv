@@ -11,6 +11,7 @@ try:
     from parrots.autograd import gradcheck
 except ImportError:
     from torch.autograd import gradcheck, gradgradcheck
+
     _USING_PARROTS = False
 
 
@@ -32,55 +33,61 @@ class TestBiasAct:
         assert out.shape == (1, 1, 3)
 
         # test with different act
-        out = bias_act(self.input_tensor, self.bias, act='relu')
+        out = bias_act(self.input_tensor, self.bias, act="relu")
         assert out.shape == (1, 3)
-        out = bias_act(self.input_tensor, self.bias, act='lrelu')
+        out = bias_act(self.input_tensor, self.bias, act="lrelu")
         assert out.shape == (1, 3)
-        out = bias_act(self.input_tensor, self.bias, act='tanh')
+        out = bias_act(self.input_tensor, self.bias, act="tanh")
         assert out.shape == (1, 3)
-        out = bias_act(self.input_tensor, self.bias, act='sigmoid')
+        out = bias_act(self.input_tensor, self.bias, act="sigmoid")
         assert out.shape == (1, 3)
-        out = bias_act(self.input_tensor, self.bias, act='elu')
+        out = bias_act(self.input_tensor, self.bias, act="elu")
         assert out.shape == (1, 3)
-        out = bias_act(self.input_tensor, self.bias, act='selu')
+        out = bias_act(self.input_tensor, self.bias, act="selu")
         assert out.shape == (1, 3)
-        out = bias_act(self.input_tensor, self.bias, act='softplus')
+        out = bias_act(self.input_tensor, self.bias, act="softplus")
         assert out.shape == (1, 3)
-        out = bias_act(self.input_tensor, self.bias, act='swish')
+        out = bias_act(self.input_tensor, self.bias, act="swish")
         assert out.shape == (1, 3)
 
         # test with different alpha
-        out = bias_act(self.input_tensor, self.bias, act='lrelu', alpha=0.1)
+        out = bias_act(self.input_tensor, self.bias, act="lrelu", alpha=0.1)
         assert out.shape == (1, 3)
 
         # test with different gain
-        out1 = bias_act(self.input_tensor, self.bias, act='lrelu', gain=0.2)
-        out2 = bias_act(self.input_tensor, self.bias, act='lrelu', gain=0.1)
+        out1 = bias_act(self.input_tensor, self.bias, act="lrelu", gain=0.2)
+        out2 = bias_act(self.input_tensor, self.bias, act="lrelu", gain=0.1)
         assert torch.allclose(out1, out2 * 2)
 
         # test with different clamp
-        out1 = bias_act(self.input_tensor, self.bias, act='lrelu', clamp=0.5)
-        out2 = bias_act(self.input_tensor, self.bias, act='lrelu', clamp=0.2)
+        out1 = bias_act(self.input_tensor, self.bias, act="lrelu", clamp=0.5)
+        out2 = bias_act(self.input_tensor, self.bias, act="lrelu", clamp=0.2)
         assert out1.max() <= 0.5
         assert out2.max() <= 0.5
 
-    @pytest.mark.skipif(not torch.cuda.is_available(), reason='requires cuda')
+    @pytest.mark.skipif(not torch.cuda.is_available(), reason="requires cuda")
     def test_bias_act_cuda(self):
         if _USING_PARROTS:
             gradcheck(
-                bias_act, (self.input_tensor.cuda(), self.bias.cuda()),
+                bias_act,
+                (self.input_tensor.cuda(), self.bias.cuda()),
                 delta=1e-4,
-                pt_atol=1e-3)
+                pt_atol=1e-3,
+            )
         else:
             gradcheck(
-                bias_act, (self.input_tensor.cuda(), self.bias.cuda()),
+                bias_act,
+                (self.input_tensor.cuda(), self.bias.cuda()),
                 eps=1e-4,
-                atol=1e-3)
+                atol=1e-3,
+            )
 
             gradgradcheck(
-                bias_act, (self.input_tensor.cuda(), self.bias.cuda()),
+                bias_act,
+                (self.input_tensor.cuda(), self.bias.cuda()),
                 eps=1e-4,
-                atol=1e-3)
+                atol=1e-3,
+            )
 
         out = bias_act(self.input_tensor.cuda(), self.bias.cuda())
         assert out.shape == (1, 3)
@@ -92,63 +99,72 @@ class TestBiasAct:
         assert out.shape == (1, 1, 3)
 
         # test with different act
-        out = bias_act(self.input_tensor.cuda(), self.bias.cuda(), act='relu')
+        out = bias_act(self.input_tensor.cuda(), self.bias.cuda(), act="relu")
         assert out.shape == (1, 3)
 
-        out = bias_act(self.input_tensor.cuda(), self.bias.cuda(), act='lrelu')
+        out = bias_act(self.input_tensor.cuda(), self.bias.cuda(), act="lrelu")
         assert out.shape == (1, 3)
-        out = bias_act(self.input_tensor.cuda(), self.bias.cuda(), act='tanh')
+        out = bias_act(self.input_tensor.cuda(), self.bias.cuda(), act="tanh")
         assert out.shape == (1, 3)
-        out = bias_act(
-            self.input_tensor.cuda(), self.bias.cuda(), act='sigmoid')
+        out = bias_act(self.input_tensor.cuda(), self.bias.cuda(), act="sigmoid")
         assert out.shape == (1, 3)
-        out = bias_act(self.input_tensor.cuda(), self.bias.cuda(), act='elu')
+        out = bias_act(self.input_tensor.cuda(), self.bias.cuda(), act="elu")
         assert out.shape == (1, 3)
-        out = bias_act(self.input_tensor.cuda(), self.bias.cuda(), act='selu')
+        out = bias_act(self.input_tensor.cuda(), self.bias.cuda(), act="selu")
         assert out.shape == (1, 3)
-        out = bias_act(
-            self.input_tensor.cuda(), self.bias.cuda(), act='softplus')
+        out = bias_act(self.input_tensor.cuda(), self.bias.cuda(), act="softplus")
         assert out.shape == (1, 3)
-        out = bias_act(self.input_tensor.cuda(), self.bias.cuda(), act='swish')
+        out = bias_act(self.input_tensor.cuda(), self.bias.cuda(), act="swish")
         assert out.shape == (1, 3)
 
         # test with different alpha
         out = bias_act(
-            self.input_tensor.cuda(), self.bias.cuda(), act='lrelu', alpha=0.1)
+            self.input_tensor.cuda(), self.bias.cuda(), act="lrelu", alpha=0.1
+        )
         assert out.shape == (1, 3)
 
         # test with different gain
         out1 = bias_act(
-            self.input_tensor.cuda(), self.bias.cuda(), act='lrelu', gain=0.2)
+            self.input_tensor.cuda(), self.bias.cuda(), act="lrelu", gain=0.2
+        )
         out2 = bias_act(
-            self.input_tensor.cuda(), self.bias.cuda(), act='lrelu', gain=0.1)
+            self.input_tensor.cuda(), self.bias.cuda(), act="lrelu", gain=0.1
+        )
         assert torch.allclose(out1, out2 * 2)
 
         # test with different clamp
         out1 = bias_act(
-            self.input_tensor.cuda(), self.bias.cuda(), act='lrelu', clamp=0.5)
+            self.input_tensor.cuda(), self.bias.cuda(), act="lrelu", clamp=0.5
+        )
         out2 = bias_act(
-            self.input_tensor.cuda(), self.bias.cuda(), act='lrelu', clamp=0.2)
+            self.input_tensor.cuda(), self.bias.cuda(), act="lrelu", clamp=0.2
+        )
         assert out1.max() <= 0.5
         assert out2.max() <= 0.5
 
-    @pytest.mark.skipif(not IS_MUSA_AVAILABLE, reason='requires musa')
+    @pytest.mark.skipif(not IS_MUSA_AVAILABLE, reason="requires musa")
     def test_bias_act_musa(self):
         if _USING_PARROTS:
             gradcheck(
-                bias_act, (self.input_tensor.musa(), self.bias.musa()),
+                bias_act,
+                (self.input_tensor.musa(), self.bias.musa()),
                 delta=1e-4,
-                pt_atol=1e-3)
+                pt_atol=1e-3,
+            )
         else:
             gradcheck(
-                bias_act, (self.input_tensor.musa(), self.bias.musa()),
+                bias_act,
+                (self.input_tensor.musa(), self.bias.musa()),
                 eps=1e-4,
-                atol=1e-3)
+                atol=1e-3,
+            )
 
             gradgradcheck(
-                bias_act, (self.input_tensor.musa(), self.bias.musa()),
+                bias_act,
+                (self.input_tensor.musa(), self.bias.musa()),
                 eps=1e-4,
-                atol=1e-3)
+                atol=1e-3,
+            )
 
         out = bias_act(self.input_tensor.musa(), self.bias.musa())
         assert out.shape == (1, 3)
@@ -160,43 +176,46 @@ class TestBiasAct:
         assert out.shape == (1, 1, 3)
 
         # test with different act
-        out = bias_act(self.input_tensor.musa(), self.bias.musa(), act='relu')
+        out = bias_act(self.input_tensor.musa(), self.bias.musa(), act="relu")
         assert out.shape == (1, 3)
 
-        out = bias_act(self.input_tensor.musa(), self.bias.musa(), act='lrelu')
+        out = bias_act(self.input_tensor.musa(), self.bias.musa(), act="lrelu")
         assert out.shape == (1, 3)
-        out = bias_act(self.input_tensor.musa(), self.bias.musa(), act='tanh')
+        out = bias_act(self.input_tensor.musa(), self.bias.musa(), act="tanh")
         assert out.shape == (1, 3)
-        out = bias_act(
-            self.input_tensor.musa(), self.bias.musa(), act='sigmoid')
+        out = bias_act(self.input_tensor.musa(), self.bias.musa(), act="sigmoid")
         assert out.shape == (1, 3)
-        out = bias_act(self.input_tensor.musa(), self.bias.musa(), act='elu')
+        out = bias_act(self.input_tensor.musa(), self.bias.musa(), act="elu")
         assert out.shape == (1, 3)
-        out = bias_act(self.input_tensor.musa(), self.bias.musa(), act='selu')
+        out = bias_act(self.input_tensor.musa(), self.bias.musa(), act="selu")
         assert out.shape == (1, 3)
-        out = bias_act(
-            self.input_tensor.musa(), self.bias.musa(), act='softplus')
+        out = bias_act(self.input_tensor.musa(), self.bias.musa(), act="softplus")
         assert out.shape == (1, 3)
-        out = bias_act(self.input_tensor.musa(), self.bias.musa(), act='swish')
+        out = bias_act(self.input_tensor.musa(), self.bias.musa(), act="swish")
         assert out.shape == (1, 3)
 
         # test with different alpha
         out = bias_act(
-            self.input_tensor.musa(), self.bias.musa(), act='lrelu', alpha=0.1)
+            self.input_tensor.musa(), self.bias.musa(), act="lrelu", alpha=0.1
+        )
         assert out.shape == (1, 3)
 
         # test with different gain
         out1 = bias_act(
-            self.input_tensor.musa(), self.bias.musa(), act='lrelu', gain=0.2)
+            self.input_tensor.musa(), self.bias.musa(), act="lrelu", gain=0.2
+        )
         out2 = bias_act(
-            self.input_tensor.musa(), self.bias.musa(), act='lrelu', gain=0.1)
+            self.input_tensor.musa(), self.bias.musa(), act="lrelu", gain=0.1
+        )
         assert torch.allclose(out1, out2 * 2)
 
         # test with different clamp
         out1 = bias_act(
-            self.input_tensor.musa(), self.bias.musa(), act='lrelu', clamp=0.5)
+            self.input_tensor.musa(), self.bias.musa(), act="lrelu", clamp=0.5
+        )
         out2 = bias_act(
-            self.input_tensor.musa(), self.bias.musa(), act='lrelu', clamp=0.2)
+            self.input_tensor.musa(), self.bias.musa(), act="lrelu", clamp=0.2
+        )
         assert out1.max() <= 0.5
         assert out2.max() <= 0.5
 
@@ -206,8 +225,9 @@ class TestBiasAct:
             def_alpha=0,
             def_gain=1,
             cuda_idx=1,
-            ref='',
-            has_2nd_grad=False)
+            ref="",
+            has_2nd_grad=False,
+        )
         _ = easy_dict.def_alpha
         easy_dict.def_alpha = 1
         del easy_dict.def_alpha
@@ -218,8 +238,9 @@ class TestBiasAct:
             def_alpha=0,
             def_gain=1,
             musa_idx=1,
-            ref='',
-            has_2nd_grad=False)
+            ref="",
+            has_2nd_grad=False,
+        )
         _ = easy_dict.def_alpha
         easy_dict.def_alpha = 1
         del easy_dict.def_alpha

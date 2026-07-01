@@ -3,7 +3,7 @@ import torch
 from mmengine.utils import digit_version
 from torch import Tensor, nn
 
-_mode_dict = {'top': 0, 'bottom': 1, 'left': 2, 'right': 3}
+_mode_dict = {"top": 0, "bottom": 1, "left": 2, "right": 3}
 
 
 def _corner_pool(x: Tensor, dim: int, flip: bool) -> Tensor:
@@ -59,10 +59,10 @@ class CornerPool(nn.Module):
     """
 
     cummax_dim_flip = {
-        'bottom': (2, False),
-        'left': (3, True),
-        'right': (3, False),
-        'top': (2, True),
+        "bottom": (2, False),
+        "left": (3, True),
+        "right": (3, False),
+        "top": (2, True),
     }
 
     def __init__(self, mode: str):
@@ -71,8 +71,9 @@ class CornerPool(nn.Module):
         self.mode = mode
 
     def forward(self, x: Tensor) -> Tensor:
-        if (torch.__version__ != 'parrots' and
-                digit_version(torch.__version__) >= digit_version('1.5.0')):
+        if torch.__version__ != "parrots" and digit_version(
+            torch.__version__
+        ) >= digit_version("1.5.0"):
             dim, flip = self.cummax_dim_flip[self.mode]
             if flip:
                 x = x.flip(dim)

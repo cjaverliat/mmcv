@@ -52,22 +52,24 @@ class RFSearchHook(Hook):
             messages. Defaults to True.
     """
 
-    def __init__(self,
-                 mode: str = 'search',
-                 config: Dict = {},
-                 rfstructure_file: Optional[str] = None,
-                 by_epoch: bool = True,
-                 verbose: bool = True):
-        assert mode in ['search', 'fixed_single_branch', 'fixed_multi_branch']
+    def __init__(
+        self,
+        mode: str = "search",
+        config: Dict = {},
+        rfstructure_file: Optional[str] = None,
+        by_epoch: bool = True,
+        verbose: bool = True,
+    ):
+        assert mode in ["search", "fixed_single_branch", "fixed_multi_branch"]
         assert config is not None
         self.config = config
-        self.config['structure'] = {}
+        self.config["structure"] = {}
         self.verbose = verbose
         if rfstructure_file is not None:
-            rfstructure = mmengine.load(rfstructure_file)['structure']
-            self.config['structure'] = rfstructure
+            rfstructure = mmengine.load(rfstructure_file)["structure"]
+            self.config["structure"] = rfstructure
         self.mode = mode
-        self.num_branches = self.config['search']['num_branches']
+        self.num_branches = self.config["search"]["num_branches"]
         self.by_epoch = by_epoch
 
     def init_model(self, model: nn.Module):
@@ -81,29 +83,29 @@ class RFSearchHook(Hook):
                 search/fixed_single_branch/fixed_multi_branch
         """
         if self.verbose:
-            print_log('RFSearch init begin.', 'current')
-        if self.mode == 'search':
-            if self.config['structure']:
-                self.set_model(model, search_op='Conv2d')
-            self.wrap_model(model, search_op='Conv2d')
-        elif self.mode == 'fixed_single_branch':
-            self.set_model(model, search_op='Conv2d')
-        elif self.mode == 'fixed_multi_branch':
-            self.set_model(model, search_op='Conv2d')
-            self.wrap_model(model, search_op='Conv2d')
+            print_log("RFSearch init begin.", "current")
+        if self.mode == "search":
+            if self.config["structure"]:
+                self.set_model(model, search_op="Conv2d")
+            self.wrap_model(model, search_op="Conv2d")
+        elif self.mode == "fixed_single_branch":
+            self.set_model(model, search_op="Conv2d")
+        elif self.mode == "fixed_multi_branch":
+            self.set_model(model, search_op="Conv2d")
+            self.wrap_model(model, search_op="Conv2d")
         else:
             raise NotImplementedError
         if self.verbose:
-            print_log('RFSearch init end.', 'current')
+            print_log("RFSearch init end.", "current")
 
     def after_train_epoch(self, runner):
         """Performs a dilation searching step after one training epoch."""
-        if self.by_epoch and self.mode == 'search':
+        if self.by_epoch and self.mode == "search":
             self.step(runner.model, runner.work_dir)
 
     def after_train_iter(self, runner, batch_idx, data_batch, outputs):
         """Performs a dilation searching step after one training iteration."""
-        if not self.by_epoch and self.mode == 'search':
+        if not self.by_epoch and self.mode == "search":
             self.step(runner.model, runner.work_dir)
 
     def step(self, model: nn.Module, work_dir: str) -> None:
@@ -113,21 +115,20 @@ class RFSearchHook(Hook):
             model (nn.Module): pytorch model
             work_dir (str): Directory to save the searching results.
         """
-        self.config['search']['step'] += 1
-        if (self.config['search']['step']
-            ) % self.config['search']['search_interval'] == 0 and (self.config[
-                'search']['step']) < self.config['search']['max_step']:
+        self.config["search"]["step"] += 1
+        if (self.config["search"]["step"]) % self.config["search"][
+            "search_interval"
+        ] == 0 and (self.config["search"]["step"]) < self.config["search"]["max_step"]:
             self.estimate_and_expand(model)
             for name, module in model.named_modules():
                 if isinstance(module, BaseConvRFSearchOp):
-                    self.config['structure'][name] = module.op_layer.dilation
+                    self.config["structure"][name] = module.op_layer.dilation
 
             write_to_json(
                 self.config,
                 os.path.join(
                     work_dir,
-                    'local_search_config_step%d.json' %
-                    self.config['search']['step'],
+                    "local_search_config_step%d.json" % self.config["search"]["step"],
                 ),
             )
 
@@ -142,10 +143,9 @@ class RFSearchHook(Hook):
                 module.estimate_rates()
                 module.expand_rates()
 
-    def wrap_model(self,
-                   model: nn.Module,
-                   search_op: str = 'Conv2d',
-                   prefix: str = '') -> None:
+    def wrap_model(
+        self, model: nn.Module, search_op: str = "Conv2d", prefix: str = ""
+    ) -> None:
         """Wrap model to support searchable conv op.
 
         Args:
@@ -156,37 +156,44 @@ class RFSearchHook(Hook):
                 Defaults to None.
             prefix (str): Prefix for function recursion. Defaults to ''.
         """
-        op = 'torch.nn.' + search_op
+        op = "torch.nn." + search_op
         for name, module in model.named_children():
-            if prefix == '':
-                fullname = 'module.' + name
+            if prefix == "":
+                fullname = "module." + name
             else:
-                fullname = prefix + '.' + name
-            if self.config['search']['skip_layer'] is not None:
-                if any(layer in fullname
-                       for layer in self.config['search']['skip_layer']):
+                fullname = prefix + "." + name
+            if self.config["search"]["skip_layer"] is not None:
+                if any(
+                    layer in fullname for layer in self.config["search"]["skip_layer"]
+                ):
                     continue
             if isinstance(module, eval(op)):
-                if 1 < module.kernel_size[0] and \
-                    0 != module.kernel_size[0] % 2 or \
-                    1 < module.kernel_size[1] and \
-                        0 != module.kernel_size[1] % 2:
-                    moduleWrap = eval(search_op + 'RFSearchOp')(
-                        module, self.config['search'], self.verbose)
+                if (
+                    1 < module.kernel_size[0]
+                    and 0 != module.kernel_size[0] % 2
+                    or 1 < module.kernel_size[1]
+                    and 0 != module.kernel_size[1] % 2
+                ):
+                    moduleWrap = eval(search_op + "RFSearchOp")(
+                        module, self.config["search"], self.verbose
+                    )
                     moduleWrap = moduleWrap.to(module.weight.device)
                     if self.verbose:
                         print_log(
-                            'Wrap model %s to %s.' %
-                            (str(module), str(moduleWrap)), 'current')
+                            f"Wrap model {str(module)} to {str(moduleWrap)}.",
+                            "current",
+                        )
                     setattr(model, name, moduleWrap)
             elif not isinstance(module, BaseConvRFSearchOp):
                 self.wrap_model(module, search_op, fullname)
 
-    def set_model(self,
-                  model: nn.Module,
-                  search_op: str = 'Conv2d',
-                  init_rates: Optional[int] = None,
-                  prefix: str = '') -> None:
+    def set_model(
+        self,
+        model: nn.Module,
+        search_op: str = "Conv2d",
+        init_rates: Optional[int] = None,
+        prefix: str = "",
+    ) -> None:
         """Set model based on config.
 
         Args:
@@ -198,42 +205,51 @@ class RFSearchHook(Hook):
                 Defaults to None.
             prefix (str): Prefix for function recursion. Defaults to ''.
         """
-        op = 'torch.nn.' + search_op
+        op = "torch.nn." + search_op
         for name, module in model.named_children():
-            if prefix == '':
-                fullname = 'module.' + name
+            if prefix == "":
+                fullname = "module." + name
             else:
-                fullname = prefix + '.' + name
-            if self.config['search']['skip_layer'] is not None:
-                if any(layer in fullname
-                       for layer in self.config['search']['skip_layer']):
+                fullname = prefix + "." + name
+            if self.config["search"]["skip_layer"] is not None:
+                if any(
+                    layer in fullname for layer in self.config["search"]["skip_layer"]
+                ):
                     continue
             if isinstance(module, eval(op)):
-                if 1 < module.kernel_size[0] and \
-                    0 != module.kernel_size[0] % 2 or \
-                    1 < module.kernel_size[1] and \
-                        0 != module.kernel_size[1] % 2:
-                    if isinstance(self.config['structure'][fullname], int):
-                        self.config['structure'][fullname] = [
-                            self.config['structure'][fullname],
-                            self.config['structure'][fullname]
+                if (
+                    1 < module.kernel_size[0]
+                    and 0 != module.kernel_size[0] % 2
+                    or 1 < module.kernel_size[1]
+                    and 0 != module.kernel_size[1] % 2
+                ):
+                    if isinstance(self.config["structure"][fullname], int):
+                        self.config["structure"][fullname] = [
+                            self.config["structure"][fullname],
+                            self.config["structure"][fullname],
                         ]
                     module.dilation = (
-                        self.config['structure'][fullname][0],
-                        self.config['structure'][fullname][1],
+                        self.config["structure"][fullname][0],
+                        self.config["structure"][fullname][1],
                     )
                     module.padding = (
                         get_single_padding(
-                            module.kernel_size[0], module.stride[0],
-                            self.config['structure'][fullname][0]),
+                            module.kernel_size[0],
+                            module.stride[0],
+                            self.config["structure"][fullname][0],
+                        ),
                         get_single_padding(
-                            module.kernel_size[1], module.stride[1],
-                            self.config['structure'][fullname][1]))
+                            module.kernel_size[1],
+                            module.stride[1],
+                            self.config["structure"][fullname][1],
+                        ),
+                    )
                     setattr(model, name, module)
                     if self.verbose:
                         print_log(
-                            'Set module %s dilation as: [%d %d]' %
-                            (fullname, module.dilation[0], module.dilation[1]),
-                            'current')
+                            "Set module %s dilation as: [%d %d]"
+                            % (fullname, module.dilation[0], module.dilation[1]),
+                            "current",
+                        )
             elif not isinstance(module, BaseConvRFSearchOp):
                 self.set_model(module, search_op, init_rates, fullname)

@@ -8,17 +8,17 @@ from torch.autograd.function import once_differentiable
 from ..utils import ext_loader
 
 ext_module = ext_loader.load_ext(
-    '_ext',
-    ['rotated_feature_align_forward', 'rotated_feature_align_backward'])
+    "_ext", ["rotated_feature_align_forward", "rotated_feature_align_backward"]
+)
 
 
 class RotatedFeatureAlignFunction(Function):
-    """Using the feature interpolation to obtain the position information
-    correspond to the refined rotate anchors and reconstruct the feature maps
-    in pixel-wise manner to achieve feature alignment.
+    """Using the feature interpolation to obtain the position information correspond to
+    the refined rotate anchors and reconstruct the feature maps in pixel-wise manner to
+    achieve feature alignment.
 
-    The details are described in the paper `R3Det: Refined Single-Stage
-    Detector with Feature Refinement for Rotating Object
+    The details are described in the paper `R3Det: Refined Single-Stage Detector with
+    Feature Refinement for Rotating Object
     <https://arxiv.org/abs/1908.05612>`_.
     """
 
@@ -26,15 +26,21 @@ class RotatedFeatureAlignFunction(Function):
     def symbolic(g, features, best_rbboxes, spatial_scale, points):
         assert points in [1, 5]
         return g.op(
-            'mmcv::MMCVRotatedFeatureAlign',
+            "mmcv::MMCVRotatedFeatureAlign",
             features,
             best_rbboxes,
             spatial_scale_f=spatial_scale,
-            points_i=points)
+            points_i=points,
+        )
 
     @staticmethod
-    def forward(ctx: Any, features: torch.Tensor, best_rbboxes: torch.Tensor,
-                spatial_scale: float, points: int) -> torch.Tensor:
+    def forward(
+        ctx: Any,
+        features: torch.Tensor,
+        best_rbboxes: torch.Tensor,
+        spatial_scale: float,
+        points: int,
+    ) -> torch.Tensor:
         """
         Args:
             features (torch.Tensor): Input features with shape [N,C,H,W].
@@ -54,11 +60,8 @@ class RotatedFeatureAlignFunction(Function):
         assert points in [1, 5]
         output = torch.zeros_like(features)
         ext_module.rotated_feature_align_forward(
-            features,
-            best_rbboxes,
-            output,
-            spatial_scale=spatial_scale,
-            points=points)
+            features, best_rbboxes, output, spatial_scale=spatial_scale, points=points
+        )
         return output
 
     @staticmethod
@@ -83,13 +86,17 @@ class RotatedFeatureAlignFunction(Function):
                 best_rbboxes,
                 grad_input,
                 spatial_scale=spatial_scale,
-                points=points)
+                points=points,
+            )
         return grad_input, None, None, None
 
 
-def rotated_feature_align(features: torch.Tensor,
-                          best_rbboxes: torch.Tensor,
-                          spatial_scale: float = 1 / 8,
-                          points: int = 1) -> torch.Tensor:
-    return RotatedFeatureAlignFunction.apply(features, best_rbboxes,
-                                             spatial_scale, points)
+def rotated_feature_align(
+    features: torch.Tensor,
+    best_rbboxes: torch.Tensor,
+    spatial_scale: float = 1 / 8,
+    points: int = 1,
+) -> torch.Tensor:
+    return RotatedFeatureAlignFunction.apply(
+        features, best_rbboxes, spatial_scale, points
+    )

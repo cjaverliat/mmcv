@@ -9,20 +9,23 @@ from torch.autograd import Function
 from ..utils import ext_loader
 
 ext_module = ext_loader.load_ext(
-    '_ext', ['riroi_align_rotated_forward', 'riroi_align_rotated_backward'])
+    "_ext", ["riroi_align_rotated_forward", "riroi_align_rotated_backward"]
+)
 
 
 class RiRoIAlignRotatedFunction(Function):
 
     @staticmethod
-    def forward(ctx: Any,
-                features: torch.Tensor,
-                rois: torch.Tensor,
-                out_size: Union[int, tuple],
-                spatial_scale: float,
-                num_samples: int = 0,
-                num_orientations: int = 8,
-                clockwise: bool = False) -> torch.Tensor:
+    def forward(
+        ctx: Any,
+        features: torch.Tensor,
+        rois: torch.Tensor,
+        out_size: Union[int, tuple],
+        spatial_scale: float,
+        num_samples: int = 0,
+        num_orientations: int = 8,
+        clockwise: bool = False,
+    ) -> torch.Tensor:
         if isinstance(out_size, int):
             out_h = out_size
             out_w = out_size
@@ -32,7 +35,8 @@ class RiRoIAlignRotatedFunction(Function):
         else:
             raise TypeError(
                 f'"out_size" should be an integer or tuple of integers,'
-                f' but got {out_size}')
+                f" but got {out_size}"
+            )
         ctx.spatial_scale = spatial_scale
         ctx.num_samples = num_samples
         ctx.num_orientations = num_orientations
@@ -54,7 +58,8 @@ class RiRoIAlignRotatedFunction(Function):
             spatial_scale=spatial_scale,
             num_samples=num_samples,
             num_orientations=num_orientations,
-            clockwise=clockwise)
+            clockwise=clockwise,
+        )
         return output
 
     @staticmethod
@@ -76,8 +81,7 @@ class RiRoIAlignRotatedFunction(Function):
         grad_input = None
 
         if ctx.needs_input_grad[0]:
-            grad_input = rois.new_zeros(batch_size, num_channels, feature_h,
-                                        feature_w)
+            grad_input = rois.new_zeros(batch_size, num_channels, feature_h, feature_w)
             ext_module.riroi_align_rotated_backward(
                 grad_output.contiguous(),
                 rois,
@@ -87,7 +91,8 @@ class RiRoIAlignRotatedFunction(Function):
                 spatial_scale=spatial_scale,
                 num_samples=num_samples,
                 num_orientations=num_orientations,
-                clockwise=clockwise)
+                clockwise=clockwise,
+            )
 
             return grad_input, None, None, None, None, None, None
         return None
@@ -117,12 +122,14 @@ class RiRoIAlignRotated(nn.Module):
             counterclockwise. Default: False.
     """
 
-    def __init__(self,
-                 out_size: tuple,
-                 spatial_scale: float,
-                 num_samples: int = 0,
-                 num_orientations: int = 8,
-                 clockwise: bool = False):
+    def __init__(
+        self,
+        out_size: tuple,
+        spatial_scale: float,
+        num_samples: int = 0,
+        num_orientations: int = 8,
+        clockwise: bool = False,
+    ):
         super().__init__()
 
         self.out_size = out_size
@@ -131,10 +138,13 @@ class RiRoIAlignRotated(nn.Module):
         self.num_orientations = int(num_orientations)
         self.clockwise = clockwise
 
-    def forward(self, features: torch.Tensor,
-                rois: torch.Tensor) -> torch.Tensor:
-        return RiRoIAlignRotatedFunction.apply(features, rois, self.out_size,
-                                               self.spatial_scale,
-                                               self.num_samples,
-                                               self.num_orientations,
-                                               self.clockwise)
+    def forward(self, features: torch.Tensor, rois: torch.Tensor) -> torch.Tensor:
+        return RiRoIAlignRotatedFunction.apply(
+            features,
+            rois,
+            self.out_size,
+            self.spatial_scale,
+            self.num_samples,
+            self.num_orientations,
+            self.clockwise,
+        )

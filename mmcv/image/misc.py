@@ -11,10 +11,12 @@ except ImportError:
     torch = None
 
 
-def tensor2imgs(tensor,
-                mean: Optional[tuple] = None,
-                std: Optional[tuple] = None,
-                to_rgb: bool = True) -> list:
+def tensor2imgs(
+    tensor,
+    mean: Optional[tuple] = None,
+    std: Optional[tuple] = None,
+    to_rgb: bool = True,
+) -> list:
     """Convert tensor to 3-channel images or 1-channel gray images.
 
     Args:
@@ -35,16 +37,17 @@ def tensor2imgs(tensor,
     """
 
     if torch is None:
-        raise RuntimeError('pytorch is not installed')
+        raise RuntimeError("pytorch is not installed")
     assert torch.is_tensor(tensor) and tensor.ndim == 4
     channels = tensor.size(1)
     assert channels in [1, 3]
     if mean is None:
-        mean = (0, ) * channels
+        mean = (0,) * channels
     if std is None:
-        std = (1, ) * channels
-    assert (channels == len(mean) == len(std) == 3) or \
-        (channels == len(mean) == len(std) == 1 and not to_rgb)
+        std = (1,) * channels
+    assert (channels == len(mean) == len(std) == 3) or (
+        channels == len(mean) == len(std) == 1 and not to_rgb
+    )
 
     num_imgs = tensor.size(0)
     mean = np.array(mean, dtype=np.float32)
@@ -52,7 +55,6 @@ def tensor2imgs(tensor,
     imgs = []
     for img_id in range(num_imgs):
         img = tensor[img_id, ...].cpu().numpy().transpose(1, 2, 0)
-        img = mmcv.imdenormalize(
-            img, mean, std, to_bgr=to_rgb).astype(np.uint8)
+        img = mmcv.imdenormalize(img, mean, std, to_bgr=to_rgb).astype(np.uint8)
         imgs.append(np.ascontiguousarray(img))
     return imgs

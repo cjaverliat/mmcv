@@ -20,20 +20,21 @@ class Loss(nn.Module):
 class TestCrissCrossAttention:
 
     def test_cc_attention(self):
-        device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
         if IS_MUSA_AVAILABLE:
-            device = torch.device('musa:0')
+            device = torch.device("musa:0")
 
         from mmcv.ops import CrissCrossAttention
+
         loss_func = Loss()
 
         input = np.fromfile(
-            'tests/data/for_ccattention/ccattention_input.bin',
-            dtype=np.float32)
+            "tests/data/for_ccattention/ccattention_input.bin", dtype=np.float32
+        )
         output = np.fromfile(
-            'tests/data/for_ccattention/ccattention_output.bin',
-            dtype=np.float32)
+            "tests/data/for_ccattention/ccattention_output.bin", dtype=np.float32
+        )
         input = input.reshape((1, 32, 45, 45))
         output = output.reshape((1, 32, 45, 45))
         label = torch.ones((1, 32, 45, 45))

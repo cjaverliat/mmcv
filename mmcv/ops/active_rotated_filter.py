@@ -8,21 +8,20 @@ from torch.autograd.function import once_differentiable
 from ..utils import ext_loader
 
 ext_module = ext_loader.load_ext(
-    '_ext',
-    ['active_rotated_filter_forward', 'active_rotated_filter_backward'])
+    "_ext", ["active_rotated_filter_forward", "active_rotated_filter_backward"]
+)
 
 
 class ActiveRotatedFilterFunction(Function):
-    """Encoding the orientation information and generating orientation-
-    sensitive features.
+    """Encoding the orientation information and generating orientation- sensitive
+    features.
 
     The details are described in the paper
     `Align Deep Features for Oriented Object Detection  <https://arxiv.org/abs/2008.09397>_`.
     """  # noqa: E501
 
     @staticmethod
-    def forward(ctx, input: torch.Tensor,
-                indices: torch.Tensor) -> torch.Tensor:
+    def forward(ctx, input: torch.Tensor, indices: torch.Tensor) -> torch.Tensor:
         """
         Args:
             input (torch.Tensor): Input features with shape

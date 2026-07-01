@@ -11,7 +11,7 @@ except ImportError:
     torch = None
 
 
-@pytest.mark.skipif(torch is None, reason='requires torch library')
+@pytest.mark.skipif(torch is None, reason="requires torch library")
 def test_tensor2imgs():
 
     # test tensor obj
@@ -32,28 +32,25 @@ def test_tensor2imgs():
     # test mean length
     with pytest.raises(AssertionError):
         tensor = torch.randn(2, 3, 5, 5)
-        mmcv.tensor2imgs(tensor, mean=(1, ))
+        mmcv.tensor2imgs(tensor, mean=(1,))
         tensor = torch.randn(2, 1, 5, 5)
         mmcv.tensor2imgs(tensor, mean=(0, 0, 0))
 
     # test std length
     with pytest.raises(AssertionError):
         tensor = torch.randn(2, 3, 5, 5)
-        mmcv.tensor2imgs(tensor, std=(1, ))
+        mmcv.tensor2imgs(tensor, std=(1,))
         tensor = torch.randn(2, 1, 5, 5)
         mmcv.tensor2imgs(tensor, std=(1, 1, 1))
 
     # test to_rgb
     with pytest.raises(AssertionError):
         tensor = torch.randn(2, 1, 5, 5)
-        mmcv.tensor2imgs(tensor, mean=(0, ), std=(1, ), to_rgb=True)
+        mmcv.tensor2imgs(tensor, mean=(0,), std=(1,), to_rgb=True)
 
     # test rgb=True
     tensor = torch.randn(2, 3, 5, 5)
-    gts = [
-        t.cpu().numpy().transpose(1, 2, 0).astype(np.uint8)
-        for t in tensor.flip(1)
-    ]
+    gts = [t.cpu().numpy().transpose(1, 2, 0).astype(np.uint8) for t in tensor.flip(1)]
     outputs = mmcv.tensor2imgs(tensor, to_rgb=True)
     for gt, output in zip(gts, outputs):
         assert_array_equal(gt, output)

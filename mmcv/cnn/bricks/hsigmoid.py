@@ -26,18 +26,21 @@ class HSigmoid(nn.Module):
         Tensor: The output tensor.
     """
 
-    def __init__(self,
-                 bias: float = 3.0,
-                 divisor: float = 6.0,
-                 min_value: float = 0.0,
-                 max_value: float = 1.0):
+    def __init__(
+        self,
+        bias: float = 3.0,
+        divisor: float = 6.0,
+        min_value: float = 0.0,
+        max_value: float = 1.0,
+    ):
         super().__init__()
         warnings.warn(
-            'In MMCV v1.4.4, we modified the default value of args to align '
-            'with PyTorch official. Previous Implementation: '
-            'Hsigmoid(x) = min(max((x + 1) / 2, 0), 1). '
-            'Current Implementation: '
-            'Hsigmoid(x) = min(max((x + 3) / 6, 0), 1).')
+            "In MMCV v1.4.4, we modified the default value of args to align "
+            "with PyTorch official. Previous Implementation: "
+            "Hsigmoid(x) = min(max((x + 1) / 2, 0), 1). "
+            "Current Implementation: "
+            "Hsigmoid(x) = min(max((x + 3) / 6, 0), 1)."
+        )
         self.bias = bias
         self.divisor = divisor
         assert self.divisor != 0

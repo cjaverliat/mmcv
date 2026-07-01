@@ -42,21 +42,22 @@ class BaseMergeCell(nn.Module):
             support ['nearest', 'bilinear']. Default: 'nearest'.
     """
 
-    def __init__(self,
-                 fused_channels: Optional[int] = 256,
-                 out_channels: Optional[int] = 256,
-                 with_out_conv: bool = True,
-                 out_conv_cfg: dict = dict(
-                     groups=1, kernel_size=3, padding=1, bias=True),
-                 out_norm_cfg: Optional[dict] = None,
-                 out_conv_order: tuple = ('act', 'conv', 'norm'),
-                 with_input1_conv: bool = False,
-                 with_input2_conv: bool = False,
-                 input_conv_cfg: Optional[dict] = None,
-                 input_norm_cfg: Optional[dict] = None,
-                 upsample_mode: str = 'nearest'):
+    def __init__(
+        self,
+        fused_channels: Optional[int] = 256,
+        out_channels: Optional[int] = 256,
+        with_out_conv: bool = True,
+        out_conv_cfg: dict = dict(groups=1, kernel_size=3, padding=1, bias=True),
+        out_norm_cfg: Optional[dict] = None,
+        out_conv_order: tuple = ("act", "conv", "norm"),
+        with_input1_conv: bool = False,
+        with_input2_conv: bool = False,
+        input_conv_cfg: Optional[dict] = None,
+        input_norm_cfg: Optional[dict] = None,
+        upsample_mode: str = "nearest",
+    ):
         super().__init__()
-        assert upsample_mode in ['nearest', 'bilinear']
+        assert upsample_mode in ["nearest", "bilinear"]
         self.with_out_conv = with_out_conv
         self.with_input1_conv = with_input1_conv
         self.with_input2_conv = with_input2_conv
@@ -68,14 +69,19 @@ class BaseMergeCell(nn.Module):
                 out_channels,  # type: ignore
                 **out_conv_cfg,
                 norm_cfg=out_norm_cfg,
-                order=out_conv_order)
+                order=out_conv_order
+            )
 
-        self.input1_conv = self._build_input_conv(
-            out_channels, input_conv_cfg,
-            input_norm_cfg) if with_input1_conv else nn.Sequential()
-        self.input2_conv = self._build_input_conv(
-            out_channels, input_conv_cfg,
-            input_norm_cfg) if with_input2_conv else nn.Sequential()
+        self.input1_conv = (
+            self._build_input_conv(out_channels, input_conv_cfg, input_norm_cfg)
+            if with_input1_conv
+            else nn.Sequential()
+        )
+        self.input2_conv = (
+            self._build_input_conv(out_channels, input_conv_cfg, input_norm_cfg)
+            if with_input2_conv
+            else nn.Sequential()
+        )
 
     def _build_input_conv(self, channel, conv_cfg, norm_cfg):
         return ConvModule(
@@ -85,7 +91,8 @@ class BaseMergeCell(nn.Module):
             padding=1,
             conv_cfg=conv_cfg,
             norm_cfg=norm_cfg,
-            bias=True)
+            bias=True,
+        )
 
     @abstractmethod
     def _binary_op(self, x1, x2):
@@ -107,15 +114,14 @@ class BaseMergeCell(nn.Module):
                 pad_t = pad_h // 2
                 pad_b = pad_h - pad_t
                 pad = (pad_l, pad_r, pad_t, pad_b)
-                x = F.pad(x, pad, mode='constant', value=0.0)
+                x = F.pad(x, pad, mode="constant", value=0.0)
             kernel_size = (x.shape[-2] // size[-2], x.shape[-1] // size[-1])
             x = F.max_pool2d(x, kernel_size=kernel_size, stride=kernel_size)
             return x
 
-    def forward(self,
-                x1: torch.Tensor,
-                x2: torch.Tensor,
-                out_size: Optional[tuple] = None) -> torch.Tensor:
+    def forward(
+        self, x1: torch.Tensor, x2: torch.Tensor, out_size: Optional[tuple] = None
+    ) -> torch.Tensor:
         assert x1.shape[:2] == x2.shape[:2]
         assert out_size is None or len(out_size) == 2
         if out_size is None:  # resize to larger one
@@ -154,10 +160,12 @@ class ConcatCell(BaseMergeCell):
 
 class GlobalPoolingCell(BaseMergeCell):
 
-    def __init__(self,
-                 in_channels: Optional[int] = None,
-                 out_channels: Optional[int] = None,
-                 **kwargs):
+    def __init__(
+        self,
+        in_channels: Optional[int] = None,
+        out_channels: Optional[int] = None,
+        **kwargs
+    ):
         super().__init__(in_channels, out_channels, **kwargs)
         self.global_pool = nn.AdaptiveAvgPool2d((1, 1))
 

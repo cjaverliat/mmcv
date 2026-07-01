@@ -79,11 +79,12 @@ def test_flops_counter():
 
     # test common layers
     for item in gt_results:
-        model = item['model']
-        input = item['input']
+        model = item["model"]
+        input = item["input"]
         flops, params = get_model_complexity_info(
-            model, input, as_strings=False, print_per_layer_stat=False)
-        assert flops == item['flops'] and params == item['params']
+            model, input, as_strings=False, print_per_layer_stat=False
+        )
+        assert flops == item["flops"] and params == item["params"]
 
     # test input constructor
     model = ExampleModel()
@@ -93,60 +94,63 @@ def test_flops_counter():
         x,
         as_strings=False,
         print_per_layer_stat=False,
-        input_constructor=input_constructor)
+        input_constructor=input_constructor,
+    )
     assert flops == 43904.0 and params == 224.0
 
     # test output string
     model = nn.Conv3d(3, 8, 3)
     x = (3, 3, 512, 512)
-    flops, params = get_model_complexity_info(
-        model, x, print_per_layer_stat=False)
-    assert flops == '0.17 GFLOPs' and params == str(656)
+    flops, params = get_model_complexity_info(model, x, print_per_layer_stat=False)
+    assert flops == "0.17 GFLOPs" and params == str(656)
 
     # test print per layer status
     model = nn.Conv1d(3, 8, 3)
     x = (3, 16)
     out = StringIO()
     get_model_complexity_info(model, x, ost=out)
-    assert out.getvalue() == \
-        'Conv1d(0.0 M, 100.000% Params, 0.0 GFLOPs, 100.000% FLOPs, 3, 8, kernel_size=(3,), stride=(1,))\n'  # noqa: E501
+    assert (
+        out.getvalue()
+        == "Conv1d(0.0 M, 100.000% Params, 0.0 GFLOPs, 100.000% FLOPs, 3, 8, kernel_size=(3,), stride=(1,))\n"
+    )  # noqa: E501
 
     # test when model is not a common instance
     model = nn.Sequential(nn.Conv2d(3, 8, 3), nn.Flatten(), nn.Linear(1568, 2))
     x = (3, 16, 16)
     flops, params = get_model_complexity_info(
-        model, x, as_strings=False, print_per_layer_stat=True)
+        model, x, as_strings=False, print_per_layer_stat=True
+    )
     assert flops == 47040.0 and params == 3362
 
 
 def test_flops_to_string():
-    flops = 6.54321 * 10.**9
-    assert flops_to_string(flops) == '6.54 GFLOPs'
-    assert flops_to_string(flops, 'MFLOPs') == '6543.21 MFLOPs'
-    assert flops_to_string(flops, 'KFLOPs') == '6543210.0 KFLOPs'
-    assert flops_to_string(flops, 'FLOPs') == '6543210000.0 FLOPs'
-    assert flops_to_string(flops, precision=4) == '6.5432 GFLOPs'
+    flops = 6.54321 * 10.0**9
+    assert flops_to_string(flops) == "6.54 GFLOPs"
+    assert flops_to_string(flops, "MFLOPs") == "6543.21 MFLOPs"
+    assert flops_to_string(flops, "KFLOPs") == "6543210.0 KFLOPs"
+    assert flops_to_string(flops, "FLOPs") == "6543210000.0 FLOPs"
+    assert flops_to_string(flops, precision=4) == "6.5432 GFLOPs"
 
-    flops = 6.54321 * 10.**9
-    assert flops_to_string(flops, None) == '6.54 GFLOPs'
-    flops = 3.21 * 10.**7
-    assert flops_to_string(flops, None) == '32.1 MFLOPs'
-    flops = 5.4 * 10.**3
-    assert flops_to_string(flops, None) == '5.4 KFLOPs'
+    flops = 6.54321 * 10.0**9
+    assert flops_to_string(flops, None) == "6.54 GFLOPs"
+    flops = 3.21 * 10.0**7
+    assert flops_to_string(flops, None) == "32.1 MFLOPs"
+    flops = 5.4 * 10.0**3
+    assert flops_to_string(flops, None) == "5.4 KFLOPs"
     flops = 987
-    assert flops_to_string(flops, None) == '987 FLOPs'
+    assert flops_to_string(flops, None) == "987 FLOPs"
 
 
 def test_params_to_string():
-    num_params = 3.21 * 10.**7
-    assert params_to_string(num_params) == '32.1 M'
-    num_params = 4.56 * 10.**5
-    assert params_to_string(num_params) == '456.0 k'
-    num_params = 7.89 * 10.**2
-    assert params_to_string(num_params) == '789.0'
+    num_params = 3.21 * 10.0**7
+    assert params_to_string(num_params) == "32.1 M"
+    num_params = 4.56 * 10.0**5
+    assert params_to_string(num_params) == "456.0 k"
+    num_params = 7.89 * 10.0**2
+    assert params_to_string(num_params) == "789.0"
 
-    num_params = 6.54321 * 10.**7
-    assert params_to_string(num_params, 'M') == '65.43 M'
-    assert params_to_string(num_params, 'K') == '65432.1 K'
-    assert params_to_string(num_params, '') == '65432100.0'
-    assert params_to_string(num_params, precision=4) == '65.4321 M'
+    num_params = 6.54321 * 10.0**7
+    assert params_to_string(num_params, "M") == "65.43 M"
+    assert params_to_string(num_params, "K") == "65432.1 K"
+    assert params_to_string(num_params, "") == "65432100.0"
+    assert params_to_string(num_params, precision=4) == "65.4321 M"

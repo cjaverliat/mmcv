@@ -4,10 +4,10 @@ from torch.autograd import Function
 
 from ..utils import ext_loader
 
-ext_module = ext_loader.load_ext('_ext', [
-    'furthest_point_sampling_forward',
-    'furthest_point_sampling_with_dist_forward'
-])
+ext_module = ext_loader.load_ext(
+    "_ext",
+    ["furthest_point_sampling_forward", "furthest_point_sampling_with_dist_forward"],
+)
 
 
 class FurthestPointSampling(Function):
@@ -15,8 +15,7 @@ class FurthestPointSampling(Function):
     corresponding points have the furthest distance."""
 
     @staticmethod
-    def forward(ctx, points_xyz: torch.Tensor,
-                num_points: int) -> torch.Tensor:
+    def forward(ctx, points_xyz: torch.Tensor, num_points: int) -> torch.Tensor:
         """
         Args:
             points_xyz (torch.Tensor): (B, N, 3) where N > num_points.
@@ -28,7 +27,7 @@ class FurthestPointSampling(Function):
         assert points_xyz.is_contiguous()
 
         B, N = points_xyz.size()[:2]
-        if points_xyz.device.type == 'npu':
+        if points_xyz.device.type == "npu":
             output = torch.IntTensor(B, num_points).npu()
             temp = torch.FloatTensor(B, N).fill_(1e10).npu()
         elif is_cuda_available():
@@ -46,7 +45,7 @@ class FurthestPointSampling(Function):
             n=N,
             m=num_points,
         )
-        if torch.__version__ != 'parrots':
+        if torch.__version__ != "parrots":
             ctx.mark_non_differentiable(output)
         return output
 
@@ -60,8 +59,7 @@ class FurthestPointSamplingWithDist(Function):
     corresponding points have the furthest distance."""
 
     @staticmethod
-    def forward(ctx, points_dist: torch.Tensor,
-                num_points: int) -> torch.Tensor:
+    def forward(ctx, points_dist: torch.Tensor, num_points: int) -> torch.Tensor:
         """
         Args:
             points_dist (torch.Tensor): (B, N, N) Distance between each point
@@ -78,8 +76,9 @@ class FurthestPointSamplingWithDist(Function):
         temp = points_dist.new_zeros([B, N]).fill_(1e10)
 
         ext_module.furthest_point_sampling_with_dist_forward(
-            points_dist, temp, output, b=B, n=N, m=num_points)
-        if torch.__version__ != 'parrots':
+            points_dist, temp, output, b=B, n=N, m=num_points
+        )
+        if torch.__version__ != "parrots":
             ctx.mark_non_differentiable(output)
         return output
 

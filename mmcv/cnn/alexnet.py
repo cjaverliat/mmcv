@@ -51,7 +51,7 @@ class AlexNet(nn.Module):
             # use default initializer
             pass
         else:
-            raise TypeError('pretrained must be a str or None')
+            raise TypeError("pretrained must be a str or None")
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
 

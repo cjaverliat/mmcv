@@ -17,24 +17,25 @@ from ..utils import IS_MUSA_AVAILABLE, ext_loader
 from .bias_act import bias_act
 from .upfirdn2d import _get_filter_size, _parse_padding, upfirdn2d
 
-ext_module = ext_loader.load_ext('_ext',
-                                 ['filtered_lrelu', 'filtered_lrelu_act_'])
+ext_module = ext_loader.load_ext("_ext", ["filtered_lrelu", "filtered_lrelu_act_"])
 
 _plugin = None
 
 
-def filtered_lrelu(input: torch.Tensor,
-                   filter_up: Optional[torch.Tensor] = None,
-                   filter_down: Optional[torch.Tensor] = None,
-                   bias: Optional[torch.Tensor] = None,
-                   up: int = 1,
-                   down: int = 1,
-                   padding: int = 0,
-                   gain: float = np.sqrt(2),
-                   slope: float = 0.2,
-                   clamp: Optional[Union[float, int]] = None,
-                   flip_filter: bool = False,
-                   use_custom_op: bool = True):
+def filtered_lrelu(
+    input: torch.Tensor,
+    filter_up: Optional[torch.Tensor] = None,
+    filter_down: Optional[torch.Tensor] = None,
+    bias: Optional[torch.Tensor] = None,
+    up: int = 1,
+    down: int = 1,
+    padding: int = 0,
+    gain: float = np.sqrt(2),
+    slope: float = 0.2,
+    clamp: Optional[Union[float, int]] = None,
+    flip_filter: bool = False,
+    use_custom_op: bool = True,
+):
     """Filtered leaky ReLU for a batch of 2D images.
 
     Performs the following sequence of operations for each channel:
@@ -109,8 +110,8 @@ def filtered_lrelu(input: torch.Tensor,
             gain=gain,
             slope=slope,
             clamp=clamp,
-            flip_filter=flip_filter).apply(input, filter_up, filter_down, bias,
-                                           None, 0, 0)
+            flip_filter=flip_filter,
+        ).apply(input, filter_up, filter_down, bias, None, 0, 0)
     if use_custom_op and IS_MUSA_AVAILABLE and input.is_musa:
         # @MTAI there have some bugs
         input = input.cpu()
@@ -131,7 +132,8 @@ def filtered_lrelu(input: torch.Tensor,
             gain=gain,
             slope=slope,
             clamp=clamp,
-            flip_filter=flip_filter)
+            flip_filter=flip_filter,
+        )
     return _filtered_lrelu_ref(
         input,
         filter_up=filter_up,
@@ -143,22 +145,25 @@ def filtered_lrelu(input: torch.Tensor,
         gain=gain,
         slope=slope,
         clamp=clamp,
-        flip_filter=flip_filter)
+        flip_filter=flip_filter,
+    )
 
 
-def _filtered_lrelu_ref(input: torch.Tensor,
-                        filter_up: Optional[torch.Tensor] = None,
-                        filter_down: Optional[torch.Tensor] = None,
-                        bias: Optional[torch.Tensor] = None,
-                        up: int = 1,
-                        down: int = 1,
-                        padding: int = 0,
-                        gain: float = np.sqrt(2),
-                        slope: float = 0.2,
-                        clamp: Optional[Union[float, int]] = None,
-                        flip_filter: bool = False):
-    """Slow and memory-inefficient reference implementation of
-    `filtered_lrelu()` using existing `upfirdn2n()` and `bias_act()` ops.
+def _filtered_lrelu_ref(
+    input: torch.Tensor,
+    filter_up: Optional[torch.Tensor] = None,
+    filter_down: Optional[torch.Tensor] = None,
+    bias: Optional[torch.Tensor] = None,
+    up: int = 1,
+    down: int = 1,
+    padding: int = 0,
+    gain: float = np.sqrt(2),
+    slope: float = 0.2,
+    clamp: Optional[Union[float, int]] = None,
+    flip_filter: bool = False,
+):
+    """Slow and memory-inefficient reference implementation of `filtered_lrelu()` using
+    existing `upfirdn2n()` and `bias_act()` ops.
 
     Args:
         input (torch.Tensor): Float32/float16/float64 input tensor of the shape
@@ -206,10 +211,12 @@ def _filtered_lrelu_ref(input: torch.Tensor,
     # Calculate output size.
     batch_size, channels, in_h, in_w = input.shape
     in_dtype = input.dtype
-    out_w = (in_w * up + (px0 + px1) - (filter_up_w - 1) -
-             (filter_down_w - 1) + (down - 1)) // down
-    out_h = (in_h * up + (py0 + py1) - (filter_up_h - 1) -
-             (filter_down_h - 1) + (down - 1)) // down
+    out_w = (
+        in_w * up + (px0 + px1) - (filter_up_w - 1) - (filter_down_w - 1) + (down - 1)
+    ) // down
+    out_h = (
+        in_h * up + (py0 + py1) - (filter_up_h - 1) - (filter_down_h - 1) + (down - 1)
+    ) // down
 
     # Compute using existing ops.
     output = bias_act(input=input, bias=bias)  # Apply bias.
@@ -219,13 +226,14 @@ def _filtered_lrelu_ref(input: torch.Tensor,
         up=up,
         padding=[px0, px1, py0, py1],
         gain=up**2,
-        flip_filter=flip_filter)  # Upsample.
+        flip_filter=flip_filter,
+    )  # Upsample.
     output = bias_act(
-        input=output, act='lrelu', alpha=slope, gain=gain,
-        clamp=clamp)  # Bias, leaky ReLU, clamp.
+        input=output, act="lrelu", alpha=slope, gain=gain, clamp=clamp
+    )  # Bias, leaky ReLU, clamp.
     output = upfirdn2d(
-        input=output, filter=filter_down, down=down,
-        flip_filter=flip_filter)  # Downsample.
+        input=output, filter=filter_down, down=down, flip_filter=flip_filter
+    )  # Downsample.
 
     assert output.shape == (batch_size, channels, out_h, out_w)
     assert output.dtype == in_dtype
@@ -235,13 +243,15 @@ def _filtered_lrelu_ref(input: torch.Tensor,
 _filtered_lrelu_cuda_cache: Dict = dict()
 
 
-def _filtered_lrelu_cuda(up: int = 1,
-                         down: int = 1,
-                         padding: int = 0,
-                         gain: float = np.sqrt(2),
-                         slope: float = 0.2,
-                         clamp: Optional[Union[float, int]] = None,
-                         flip_filter: bool = False):
+def _filtered_lrelu_cuda(
+    up: int = 1,
+    down: int = 1,
+    padding: int = 0,
+    gain: float = np.sqrt(2),
+    slope: float = 0.2,
+    clamp: Optional[Union[float, int]] = None,
+    flip_filter: bool = False,
+):
     """Fast CUDA implementation of `filtered_lrelu()` using custom ops.
 
     Args:
@@ -271,7 +281,7 @@ def _filtered_lrelu_cuda(up: int = 1,
     assert slope == float(slope) and slope >= 0
     slope = float(slope)
     assert clamp is None or (clamp == float(clamp) and clamp >= 0)
-    clamp = float(clamp if clamp is not None else 'inf')
+    clamp = float(clamp if clamp is not None else "inf")
 
     # Lookup from cache.
     key = (up, down, px0, px1, py0, py1, gain, slope, clamp, flip_filter)
@@ -289,13 +299,11 @@ def _filtered_lrelu_cuda(up: int = 1,
             # Replace empty up/downsample kernels with full 1x1 kernels
             # (faster than separable).
             if filter_up is None:
-                filter_up = torch.ones([1, 1],
-                                       dtype=torch.float32,
-                                       device=input.device)
+                filter_up = torch.ones([1, 1], dtype=torch.float32, device=input.device)
             if filter_down is None:
-                filter_down = torch.ones([1, 1],
-                                         dtype=torch.float32,
-                                         device=input.device)
+                filter_down = torch.ones(
+                    [1, 1], dtype=torch.float32, device=input.device
+                )
             assert 1 <= filter_up.ndim <= 2
             assert 1 <= filter_down.ndim <= 2
 
@@ -303,8 +311,7 @@ def _filtered_lrelu_cuda(up: int = 1,
             # factor is 1.
             if up == 1 and filter_up.ndim == 1 and filter_up.shape[0] == 1:
                 filter_up = filter_up.square()[None]
-            if down == 1 and filter_down.ndim == 1 and filter_down.shape[
-                    0] == 1:
+            if down == 1 and filter_down.ndim == 1 and filter_down.shape[0] == 1:
                 filter_down = filter_down.square()[None]
 
             # Missing sign input tensor.
@@ -313,37 +320,54 @@ def _filtered_lrelu_cuda(up: int = 1,
 
             # Missing bias tensor.
             if bias is None:
-                bias = torch.zeros([input.shape[1]],
-                                   dtype=input.dtype,
-                                   device=input.device)
+                bias = torch.zeros(
+                    [input.shape[1]], dtype=input.dtype, device=input.device
+                )
 
             # Construct internal sign tensor only if gradients are needed.
-            write_signs = (si.numel() == 0) and (input.requires_grad
-                                                 or bias.requires_grad)
+            write_signs = (si.numel() == 0) and (
+                input.requires_grad or bias.requires_grad
+            )
 
             # Warn if input storage strides are not in decreasing order due to
             # e.g. channels-last layout.
-            strides = [
-                input.stride(i) for i in range(input.ndim) if input.size(i) > 1
-            ]
+            strides = [input.stride(i) for i in range(input.ndim) if input.size(i) > 1]
             if any(a < b for a, b in zip(strides[:-1], strides[1:])):
                 warnings.warn(
-                    'low-performance memory layout detected in filtered_lrelu '
-                    'input', RuntimeWarning)
+                    "low-performance memory layout detected in filtered_lrelu " "input",
+                    RuntimeWarning,
+                )
 
             # Call C++/Cuda plugin if datatype is supported.
             if input.dtype in [torch.float16, torch.float32]:
-                if torch.cuda.current_stream(
-                        input.device) != torch.cuda.default_stream(
-                            input.device):
+                if torch.cuda.current_stream(input.device) != torch.cuda.default_stream(
+                    input.device
+                ):
                     warnings.warn(
-                        'filtered_lrelu called with non-default cuda stream '
-                        'but concurrent execution is not supported',
-                        RuntimeWarning)
+                        "filtered_lrelu called with non-default cuda stream "
+                        "but concurrent execution is not supported",
+                        RuntimeWarning,
+                    )
                 y, so, return_code = ext_module.filtered_lrelu(
-                    input, filter_up, filter_down, bias, si.to(input.device),
-                    up, down, px0, px1, py0, py1, sx, sy, gain, slope, clamp,
-                    flip_filter, write_signs)
+                    input,
+                    filter_up,
+                    filter_down,
+                    bias,
+                    si.to(input.device),
+                    up,
+                    down,
+                    px0,
+                    px1,
+                    py0,
+                    py1,
+                    sx,
+                    sy,
+                    gain,
+                    slope,
+                    clamp,
+                    flip_filter,
+                    write_signs,
+                )
             else:
                 return_code = -1
 
@@ -353,9 +377,10 @@ def _filtered_lrelu_cuda(up: int = 1,
             # computation.
             if return_code < 0:
                 warnings.warn(
-                    'filtered_lrelu called with parameters that have no '
-                    'optimized CUDA kernel, using generic fallback',
-                    RuntimeWarning)
+                    "filtered_lrelu called with parameters that have no "
+                    "optimized CUDA kernel, using generic fallback",
+                    RuntimeWarning,
+                )
 
                 y = input.add(bias.unsqueeze(-1).unsqueeze(-1))  # Add bias.
                 y = upfirdn2d(
@@ -364,20 +389,18 @@ def _filtered_lrelu_cuda(up: int = 1,
                     up=up,
                     padding=[px0, px1, py0, py1],
                     gain=float(up**2),
-                    flip_filter=flip_filter)  # Upsample.
+                    flip_filter=flip_filter,
+                )  # Upsample.
                 # Activation function and sign handling. Modifies y in-place.
-                so = ext_module.filtered_lrelu_act_(y, si.to(y.device), sx, sy,
-                                                    gain, slope, clamp,
-                                                    write_signs)
+                so = ext_module.filtered_lrelu_act_(
+                    y, si.to(y.device), sx, sy, gain, slope, clamp, write_signs
+                )
                 y = upfirdn2d(
-                    input=y,
-                    filter=filter_down,
-                    down=down,
-                    flip_filter=flip_filter)  # Downsample.
+                    input=y, filter=filter_down, down=down, flip_filter=flip_filter
+                )  # Downsample.
 
             # Prepare for gradient computation.
-            ctx.save_for_backward(filter_up, filter_down,
-                                  (si if si.numel() else so))
+            ctx.save_for_backward(filter_up, filter_down, (si if si.numel() else so))
             ctx.x_shape = input.shape
             ctx.y_shape = y.shape
             ctx.s_ofs = sx, sy
@@ -404,15 +427,13 @@ def _filtered_lrelu_cuda(up: int = 1,
 
             if ctx.needs_input_grad[0] or ctx.needs_input_grad[3]:
                 pp = [
-                    (filter_up.shape[-1] - 1) + (filter_down.shape[-1] - 1) -
-                    px0,
+                    (filter_up.shape[-1] - 1) + (filter_down.shape[-1] - 1) - px0,
                     xw * up - yw * down + px0 - (up - 1),
-                    (filter_up.shape[0] - 1) + (filter_down.shape[0] - 1) -
-                    py0,
+                    (filter_up.shape[0] - 1) + (filter_down.shape[0] - 1) - py0,
                     xh * up - yh * down + py0 - (up - 1),
                 ]
                 gg = gain * (up**2) / (down**2)
-                ff = (not flip_filter)
+                ff = not flip_filter
                 sx = sx - (filter_up.shape[-1] - 1) + px0
                 sy = sy - (filter_up.shape[0] - 1) + py0
                 dx = _filtered_lrelu_cuda(
@@ -422,8 +443,8 @@ def _filtered_lrelu_cuda(up: int = 1,
                     gain=gg,
                     slope=slope,
                     clamp=None,
-                    flip_filter=ff).apply(dy, filter_down, filter_up, None, si,
-                                          sx, sy)
+                    flip_filter=ff,
+                ).apply(dy, filter_down, filter_up, None, si, sx, sy)
 
             if ctx.needs_input_grad[3]:
                 db = dx.sum([0, 2, 3])
@@ -438,13 +459,15 @@ def _filtered_lrelu_cuda(up: int = 1,
 _filtered_lrelu_musa_cache: Dict = dict()
 
 
-def _filtered_lrelu_musa(up: int = 1,
-                         down: int = 1,
-                         padding: int = 0,
-                         gain: float = np.sqrt(2),
-                         slope: float = 0.2,
-                         clamp: Optional[Union[float, int]] = None,
-                         flip_filter: bool = False):
+def _filtered_lrelu_musa(
+    up: int = 1,
+    down: int = 1,
+    padding: int = 0,
+    gain: float = np.sqrt(2),
+    slope: float = 0.2,
+    clamp: Optional[Union[float, int]] = None,
+    flip_filter: bool = False,
+):
     """Fast MUSA implementation of `filtered_lrelu()` using custom ops.
 
     Args:
@@ -474,7 +497,7 @@ def _filtered_lrelu_musa(up: int = 1,
     assert slope == float(slope) and slope >= 0
     slope = float(slope)
     assert clamp is None or (clamp == float(clamp) and clamp >= 0)
-    clamp = float(clamp if clamp is not None else 'inf')
+    clamp = float(clamp if clamp is not None else "inf")
 
     # Lookup from cache.
     key = (up, down, px0, px1, py0, py1, gain, slope, clamp, flip_filter)
@@ -492,13 +515,11 @@ def _filtered_lrelu_musa(up: int = 1,
             # Replace empty up/downsample kernels with full 1x1 kernels
             # (faster than separable).
             if filter_up is None:
-                filter_up = torch.ones([1, 1],
-                                       dtype=torch.float32,
-                                       device=input.device)
+                filter_up = torch.ones([1, 1], dtype=torch.float32, device=input.device)
             if filter_down is None:
-                filter_down = torch.ones([1, 1],
-                                         dtype=torch.float32,
-                                         device=input.device)
+                filter_down = torch.ones(
+                    [1, 1], dtype=torch.float32, device=input.device
+                )
             assert 1 <= filter_up.ndim <= 2
             assert 1 <= filter_down.ndim <= 2
 
@@ -506,8 +527,7 @@ def _filtered_lrelu_musa(up: int = 1,
             # factor is 1.
             if up == 1 and filter_up.ndim == 1 and filter_up.shape[0] == 1:
                 filter_up = filter_up.square()[None]
-            if down == 1 and filter_down.ndim == 1 and filter_down.shape[
-                    0] == 1:
+            if down == 1 and filter_down.ndim == 1 and filter_down.shape[0] == 1:
                 filter_down = filter_down.square()[None]
 
             # Missing sign input tensor.
@@ -516,37 +536,54 @@ def _filtered_lrelu_musa(up: int = 1,
 
             # Missing bias tensor.
             if bias is None:
-                bias = torch.zeros([input.shape[1]],
-                                   dtype=input.dtype,
-                                   device=input.device)
+                bias = torch.zeros(
+                    [input.shape[1]], dtype=input.dtype, device=input.device
+                )
 
             # Construct internal sign tensor only if gradients are needed.
-            write_signs = (si.numel() == 0) and (input.requires_grad
-                                                 or bias.requires_grad)
+            write_signs = (si.numel() == 0) and (
+                input.requires_grad or bias.requires_grad
+            )
 
             # Warn if input storage strides are not in decreasing order due to
             # e.g. channels-last layout.
-            strides = [
-                input.stride(i) for i in range(input.ndim) if input.size(i) > 1
-            ]
+            strides = [input.stride(i) for i in range(input.ndim) if input.size(i) > 1]
             if any(a < b for a, b in zip(strides[:-1], strides[1:])):
                 warnings.warn(
-                    'low-performance memory layout detected in filtered_lrelu '
-                    'input', RuntimeWarning)
+                    "low-performance memory layout detected in filtered_lrelu " "input",
+                    RuntimeWarning,
+                )
 
             # Call C++/MUSA plugin if datatype is supported.
             if input.dtype in [torch.float16, torch.float32]:
-                if torch.musa.current_stream(
-                        input.device) != torch.musa.default_stream(
-                            input.device):
+                if torch.musa.current_stream(input.device) != torch.musa.default_stream(
+                    input.device
+                ):
                     warnings.warn(
-                        'filtered_lrelu called with non-default musa stream '
-                        'but concurrent execution is not supported',
-                        RuntimeWarning)
+                        "filtered_lrelu called with non-default musa stream "
+                        "but concurrent execution is not supported",
+                        RuntimeWarning,
+                    )
                 y, so, return_code = ext_module.filtered_lrelu(
-                    input, filter_up, filter_down, bias, si.to(input.device),
-                    up, down, px0, px1, py0, py1, sx, sy, gain, slope, clamp,
-                    flip_filter, write_signs)
+                    input,
+                    filter_up,
+                    filter_down,
+                    bias,
+                    si.to(input.device),
+                    up,
+                    down,
+                    px0,
+                    px1,
+                    py0,
+                    py1,
+                    sx,
+                    sy,
+                    gain,
+                    slope,
+                    clamp,
+                    flip_filter,
+                    write_signs,
+                )
             else:
                 return_code = -1
 
@@ -556,9 +593,10 @@ def _filtered_lrelu_musa(up: int = 1,
             # computation.
             if return_code < 0:
                 warnings.warn(
-                    'filtered_lrelu called with parameters that have no '
-                    'optimized MUSA kernel, using generic fallback',
-                    RuntimeWarning)
+                    "filtered_lrelu called with parameters that have no "
+                    "optimized MUSA kernel, using generic fallback",
+                    RuntimeWarning,
+                )
 
                 y = input.add(bias.unsqueeze(-1).unsqueeze(-1))  # Add bias.
                 y = upfirdn2d(
@@ -567,20 +605,18 @@ def _filtered_lrelu_musa(up: int = 1,
                     up=up,
                     padding=[px0, px1, py0, py1],
                     gain=float(up**2),
-                    flip_filter=flip_filter)  # Upsample.
+                    flip_filter=flip_filter,
+                )  # Upsample.
                 # Activation function and sign handling. Modifies y in-place.
-                so = ext_module.filtered_lrelu_act_(y, si.to(y.device), sx, sy,
-                                                    gain, slope, clamp,
-                                                    write_signs)
+                so = ext_module.filtered_lrelu_act_(
+                    y, si.to(y.device), sx, sy, gain, slope, clamp, write_signs
+                )
                 y = upfirdn2d(
-                    input=y,
-                    filter=filter_down,
-                    down=down,
-                    flip_filter=flip_filter)  # Downsample.
+                    input=y, filter=filter_down, down=down, flip_filter=flip_filter
+                )  # Downsample.
 
             # Prepare for gradient computation.
-            ctx.save_for_backward(filter_up, filter_down,
-                                  (si if si.numel() else so))
+            ctx.save_for_backward(filter_up, filter_down, (si if si.numel() else so))
             ctx.x_shape = input.shape
             ctx.y_shape = y.shape
             ctx.s_ofs = sx, sy
@@ -607,15 +643,13 @@ def _filtered_lrelu_musa(up: int = 1,
 
             if ctx.needs_input_grad[0] or ctx.needs_input_grad[3]:
                 pp = [
-                    (filter_up.shape[-1] - 1) + (filter_down.shape[-1] - 1) -
-                    px0,
+                    (filter_up.shape[-1] - 1) + (filter_down.shape[-1] - 1) - px0,
                     xw * up - yw * down + px0 - (up - 1),
-                    (filter_up.shape[0] - 1) + (filter_down.shape[0] - 1) -
-                    py0,
+                    (filter_up.shape[0] - 1) + (filter_down.shape[0] - 1) - py0,
                     xh * up - yh * down + py0 - (up - 1),
                 ]
                 gg = gain * (up**2) / (down**2)
-                ff = (not flip_filter)
+                ff = not flip_filter
                 sx = sx - (filter_up.shape[-1] - 1) + px0
                 sy = sy - (filter_up.shape[0] - 1) + py0
                 dx = _filtered_lrelu_musa(
@@ -625,8 +659,8 @@ def _filtered_lrelu_musa(up: int = 1,
                     gain=gg,
                     slope=slope,
                     clamp=None,
-                    flip_filter=ff).apply(dy, filter_down, filter_up, None, si,
-                                          sx, sy)
+                    flip_filter=ff,
+                ).apply(dy, filter_down, filter_up, None, si, sx, sy)
 
             if ctx.needs_input_grad[3]:
                 db = dx.sum([0, 2, 3])

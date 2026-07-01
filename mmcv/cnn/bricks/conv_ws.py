@@ -8,14 +8,16 @@ import torch.nn.functional as F
 from mmengine.registry import MODELS
 
 
-def conv_ws_2d(input: torch.Tensor,
-               weight: torch.Tensor,
-               bias: Optional[torch.Tensor] = None,
-               stride: Union[int, Tuple[int, int]] = 1,
-               padding: Union[int, Tuple[int, int]] = 0,
-               dilation: Union[int, Tuple[int, int]] = 1,
-               groups: int = 1,
-               eps: float = 1e-5) -> torch.Tensor:
+def conv_ws_2d(
+    input: torch.Tensor,
+    weight: torch.Tensor,
+    bias: Optional[torch.Tensor] = None,
+    stride: Union[int, Tuple[int, int]] = 1,
+    padding: Union[int, Tuple[int, int]] = 0,
+    dilation: Union[int, Tuple[int, int]] = 1,
+    groups: int = 1,
+    eps: float = 1e-5,
+) -> torch.Tensor:
     c_in = weight.size(0)
     weight_flat = weight.view(c_in, -1)
     mean = weight_flat.mean(dim=1, keepdim=True).view(c_in, 1, 1, 1)
@@ -24,19 +26,21 @@ def conv_ws_2d(input: torch.Tensor,
     return F.conv2d(input, weight, bias, stride, padding, dilation, groups)
 
 
-@MODELS.register_module('ConvWS')
+@MODELS.register_module("ConvWS")
 class ConvWS2d(nn.Conv2d):
 
-    def __init__(self,
-                 in_channels: int,
-                 out_channels: int,
-                 kernel_size: Union[int, Tuple[int, int]],
-                 stride: Union[int, Tuple[int, int]] = 1,
-                 padding: Union[int, Tuple[int, int]] = 0,
-                 dilation: Union[int, Tuple[int, int]] = 1,
-                 groups: int = 1,
-                 bias: bool = True,
-                 eps: float = 1e-5):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: Union[int, Tuple[int, int]],
+        stride: Union[int, Tuple[int, int]] = 1,
+        padding: Union[int, Tuple[int, int]] = 0,
+        dilation: Union[int, Tuple[int, int]] = 1,
+        groups: int = 1,
+        bias: bool = True,
+        eps: float = 1e-5,
+    ):
         super().__init__(
             in_channels,
             out_channels,
@@ -45,15 +49,24 @@ class ConvWS2d(nn.Conv2d):
             padding=padding,
             dilation=dilation,
             groups=groups,
-            bias=bias)
+            bias=bias,
+        )
         self.eps = eps
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return conv_ws_2d(x, self.weight, self.bias, self.stride, self.padding,
-                          self.dilation, self.groups, self.eps)
+        return conv_ws_2d(
+            x,
+            self.weight,
+            self.bias,
+            self.stride,
+            self.padding,
+            self.dilation,
+            self.groups,
+            self.eps,
+        )
 
 
-@MODELS.register_module(name='ConvAWS')
+@MODELS.register_module(name="ConvAWS")
 class ConvAWS2d(nn.Conv2d):
     """AWS (Adaptive Weight Standardization)
 
@@ -77,15 +90,17 @@ class ConvAWS2d(nn.Conv2d):
             output. Default: True
     """
 
-    def __init__(self,
-                 in_channels: int,
-                 out_channels: int,
-                 kernel_size: Union[int, Tuple[int, int]],
-                 stride: Union[int, Tuple[int, int]] = 1,
-                 padding: Union[int, Tuple[int, int]] = 0,
-                 dilation: Union[int, Tuple[int, int]] = 1,
-                 groups: int = 1,
-                 bias: bool = True):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: Union[int, Tuple[int, int]],
+        stride: Union[int, Tuple[int, int]] = 1,
+        padding: Union[int, Tuple[int, int]] = 0,
+        dilation: Union[int, Tuple[int, int]] = 1,
+        groups: int = 1,
+        bias: bool = True,
+    ):
         super().__init__(
             in_channels,
             out_channels,
@@ -94,11 +109,10 @@ class ConvAWS2d(nn.Conv2d):
             padding=padding,
             dilation=dilation,
             groups=groups,
-            bias=bias)
-        self.register_buffer('weight_gamma',
-                             torch.ones(self.out_channels, 1, 1, 1))
-        self.register_buffer('weight_beta',
-                             torch.zeros(self.out_channels, 1, 1, 1))
+            bias=bias,
+        )
+        self.register_buffer("weight_gamma", torch.ones(self.out_channels, 1, 1, 1))
+        self.register_buffer("weight_beta", torch.zeros(self.out_channels, 1, 1, 1))
 
     def _get_weight(self, weight: torch.Tensor) -> torch.Tensor:
         weight_flat = weight.view(weight.size(0), -1)
@@ -110,29 +124,40 @@ class ConvAWS2d(nn.Conv2d):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         weight = self._get_weight(self.weight)
-        return F.conv2d(x, weight, self.bias, self.stride, self.padding,
-                        self.dilation, self.groups)
+        return F.conv2d(
+            x, weight, self.bias, self.stride, self.padding, self.dilation, self.groups
+        )
 
-    def _load_from_state_dict(self, state_dict: OrderedDict, prefix: str,
-                              local_metadata: Dict, strict: bool,
-                              missing_keys: List[str],
-                              unexpected_keys: List[str],
-                              error_msgs: List[str]) -> None:
+    def _load_from_state_dict(
+        self,
+        state_dict: OrderedDict,
+        prefix: str,
+        local_metadata: Dict,
+        strict: bool,
+        missing_keys: List[str],
+        unexpected_keys: List[str],
+        error_msgs: List[str],
+    ) -> None:
         """Override default load function.
 
-        AWS overrides the function _load_from_state_dict to recover
-        weight_gamma and weight_beta if they are missing. If weight_gamma and
-        weight_beta are found in the checkpoint, this function will return
-        after super()._load_from_state_dict. Otherwise, it will compute the
-        mean and std of the pretrained weights and store them in weight_beta
-        and weight_gamma.
+        AWS overrides the function _load_from_state_dict to recover weight_gamma and
+        weight_beta if they are missing. If weight_gamma and weight_beta are found in
+        the checkpoint, this function will return after super()._load_from_state_dict.
+        Otherwise, it will compute the mean and std of the pretrained weights and store
+        them in weight_beta and weight_gamma.
         """
 
         self.weight_gamma.data.fill_(-1)
         local_missing_keys: List = []
-        super()._load_from_state_dict(state_dict, prefix, local_metadata,
-                                      strict, local_missing_keys,
-                                      unexpected_keys, error_msgs)
+        super()._load_from_state_dict(
+            state_dict,
+            prefix,
+            local_metadata,
+            strict,
+            local_missing_keys,
+            unexpected_keys,
+            error_msgs,
+        )
         if self.weight_gamma.data.mean() > 0:
             for k in local_missing_keys:
                 missing_keys.append(k)
@@ -144,8 +169,9 @@ class ConvAWS2d(nn.Conv2d):
         self.weight_beta.data.copy_(mean)
         self.weight_gamma.data.copy_(std)
         missing_gamma_beta = [
-            k for k in local_missing_keys
-            if k.endswith('weight_gamma') or k.endswith('weight_beta')
+            k
+            for k in local_missing_keys
+            if k.endswith("weight_gamma") or k.endswith("weight_beta")
         ]
         for k in missing_gamma_beta:
             local_missing_keys.remove(k)

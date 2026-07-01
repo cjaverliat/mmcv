@@ -5,15 +5,14 @@ import cv2
 import numpy as np
 
 from mmcv.image import imread, imwrite
+
 from .color import Color, color_val
 
 # a type alias declares the optional types of color argument
 ColorType = Union[Color, str, tuple, int, np.ndarray]
 
 
-def imshow(img: Union[str, np.ndarray],
-           win_name: str = '',
-           wait_time: int = 0):
+def imshow(img: Union[str, np.ndarray], win_name: str = "", wait_time: int = 0):
     """Show an image.
 
     Args:
@@ -34,15 +33,17 @@ def imshow(img: Union[str, np.ndarray],
         ret = cv2.waitKey(wait_time)
 
 
-def imshow_bboxes(img: Union[str, np.ndarray],
-                  bboxes: Union[list, np.ndarray],
-                  colors: ColorType = 'green',
-                  top_k: int = -1,
-                  thickness: int = 1,
-                  show: bool = True,
-                  win_name: str = '',
-                  wait_time: int = 0,
-                  out_file: Optional[str] = None):
+def imshow_bboxes(
+    img: Union[str, np.ndarray],
+    bboxes: Union[list, np.ndarray],
+    colors: ColorType = "green",
+    top_k: int = -1,
+    thickness: int = 1,
+    show: bool = True,
+    win_name: str = "",
+    wait_time: int = 0,
+    out_file: Optional[str] = None,
+):
     """Draw bboxes on an image.
 
     Args:
@@ -78,8 +79,7 @@ def imshow_bboxes(img: Union[str, np.ndarray],
         for j in range(_top_k):
             left_top = (_bboxes[j, 0], _bboxes[j, 1])
             right_bottom = (_bboxes[j, 2], _bboxes[j, 3])
-            cv2.rectangle(
-                img, left_top, right_bottom, colors[i], thickness=thickness)
+            cv2.rectangle(img, left_top, right_bottom, colors[i], thickness=thickness)
 
     if show:
         imshow(img, win_name, wait_time)
@@ -88,19 +88,21 @@ def imshow_bboxes(img: Union[str, np.ndarray],
     return img
 
 
-def imshow_det_bboxes(img: Union[str, np.ndarray],
-                      bboxes: np.ndarray,
-                      labels: np.ndarray,
-                      class_names: Optional[List[str]] = None,
-                      score_thr: float = 0,
-                      bbox_color: ColorType = 'green',
-                      text_color: ColorType = 'green',
-                      thickness: int = 1,
-                      font_scale: float = 0.5,
-                      show: bool = True,
-                      win_name: str = '',
-                      wait_time: int = 0,
-                      out_file: Optional[str] = None):
+def imshow_det_bboxes(
+    img: Union[str, np.ndarray],
+    bboxes: np.ndarray,
+    labels: np.ndarray,
+    class_names: Optional[List[str]] = None,
+    score_thr: float = 0,
+    bbox_color: ColorType = "green",
+    text_color: ColorType = "green",
+    thickness: int = 1,
+    font_scale: float = 0.5,
+    show: bool = True,
+    win_name: str = "",
+    wait_time: int = 0,
+    out_file: Optional[str] = None,
+):
     """Draw bboxes and class labels (with scores) on an image.
 
     Args:
@@ -145,14 +147,18 @@ def imshow_det_bboxes(img: Union[str, np.ndarray],
         bbox_int = bbox.astype(np.int32)
         left_top = (bbox_int[0], bbox_int[1])
         right_bottom = (bbox_int[2], bbox_int[3])
-        cv2.rectangle(
-            img, left_top, right_bottom, bbox_color, thickness=thickness)
-        label_text = class_names[
-            label] if class_names is not None else f'cls {label}'
+        cv2.rectangle(img, left_top, right_bottom, bbox_color, thickness=thickness)
+        label_text = class_names[label] if class_names is not None else f"cls {label}"
         if len(bbox) > 4:
-            label_text += f'|{bbox[-1]:.02f}'
-        cv2.putText(img, label_text, (bbox_int[0], bbox_int[1] - 2),
-                    cv2.FONT_HERSHEY_COMPLEX, font_scale, text_color)
+            label_text += f"|{bbox[-1]:.02f}"
+        cv2.putText(
+            img,
+            label_text,
+            (bbox_int[0], bbox_int[1] - 2),
+            cv2.FONT_HERSHEY_COMPLEX,
+            font_scale,
+            text_color,
+        )
 
     if show:
         imshow(img, win_name, wait_time)

@@ -3,39 +3,60 @@ import numpy as np
 import pytest
 import torch
 
-from mmcv.utils import (IS_CUDA_AVAILABLE, IS_MLU_AVAILABLE, IS_MUSA_AVAILABLE,
-                        IS_NPU_AVAILABLE)
+from mmcv.utils import (
+    IS_CUDA_AVAILABLE,
+    IS_MLU_AVAILABLE,
+    IS_MUSA_AVAILABLE,
+    IS_NPU_AVAILABLE,
+)
 
 _USING_PARROTS = True
 try:
     from parrots.autograd import gradcheck
 except ImportError:
     from torch.autograd import gradcheck
+
     _USING_PARROTS = False
 
 # torch.set_printoptions(precision=8, threshold=100)
 
 inputs = [
-    ([[1., 0], [0, 1.]], [0, 1]),
-    ([[1., 0, -1.], [0, 1., 2.]], [2, 1]),
+    ([[1.0, 0], [0, 1.0]], [0, 1]),
+    ([[1.0, 0, -1.0], [0, 1.0, 2.0]], [2, 1]),
     ([[1e-6, 2e-6, 3e-6], [4e-6, 5e-5, 6e-4], [7e-3, 8e-2, 9e-1]], [1, 2, 0]),
 ]
 
-softmax_outputs = [(0.00566451, [[-0.00657264, 0.00657264],
-                                 [0.00657264, -0.00657264]]),
-                   (0.34956908, [[0.10165970, 0.03739851, -0.13905823],
-                                 [0.01227554, -0.10298023, 0.09070466]]),
-                   (0.15754992, [[0.02590877, -0.05181759, 0.02590882],
-                                 [0.02589641, 0.02589760, -0.05179400],
-                                 [-0.07307514, 0.02234372, 0.05073142]])]
+softmax_outputs = [
+    (0.00566451, [[-0.00657264, 0.00657264], [0.00657264, -0.00657264]]),
+    (
+        0.34956908,
+        [[0.10165970, 0.03739851, -0.13905823], [0.01227554, -0.10298023, 0.09070466]],
+    ),
+    (
+        0.15754992,
+        [
+            [0.02590877, -0.05181759, 0.02590882],
+            [0.02589641, 0.02589760, -0.05179400],
+            [-0.07307514, 0.02234372, 0.05073142],
+        ],
+    ),
+]
 
-sigmoid_outputs = [(0.13562961, [[-0.00657264, 0.11185755],
-                                 [0.11185755, -0.00657264]]),
-                   (1.10251057, [[0.28808805, 0.11185755, -0.09602935],
-                                 [0.11185755, -0.00657264, 0.40376765]]),
-                   (0.42287254, [[0.07457182, -0.02485716, 0.07457201],
-                                 [0.07457211, 0.07457669, -0.02483728],
-                                 [-0.02462499, 0.08277918, 0.18050370]])]
+sigmoid_outputs = [
+    (0.13562961, [[-0.00657264, 0.11185755], [0.11185755, -0.00657264]]),
+    (
+        1.10251057,
+        [[0.28808805, 0.11185755, -0.09602935], [0.11185755, -0.00657264, 0.40376765]],
+    ),
+    (
+        0.42287254,
+        [
+            [0.07457182, -0.02485716, 0.07457201],
+            [0.07457211, 0.07457669, -0.02483728],
+            [-0.02462499, 0.08277918, 0.18050370],
+        ],
+    ),
+]
 
 
 class Testfocalloss:
@@ -44,6 +65,7 @@ class Testfocalloss:
         if not torch.cuda.is_available():
             return
         from mmcv.ops import softmax_focal_loss
+
         alpha = 0.25
         gamma = 2.0
         for case, output in zip(inputs, softmax_outputs):
@@ -55,7 +77,7 @@ class Testfocalloss:
             x.requires_grad_()
             y = torch.from_numpy(np_y).cuda().long()
 
-            loss = softmax_focal_loss(x, y, gamma, alpha, None, 'mean')
+            loss = softmax_focal_loss(x, y, gamma, alpha, None, "mean")
             loss.backward()
 
             assert np.allclose(loss.data.cpu().numpy(), output[0], 1e-2)
@@ -63,6 +85,7 @@ class Testfocalloss:
 
     def _test_sigmoid(self, device, dtype=torch.float):
         from mmcv.ops import sigmoid_focal_loss
+
         alpha = 0.25
         gamma = 2.0
         for case, output in zip(inputs, sigmoid_outputs):
@@ -74,7 +97,7 @@ class Testfocalloss:
             x.requires_grad_()
             y = torch.from_numpy(np_y).to(device).long()
 
-            loss = sigmoid_focal_loss(x, y, gamma, alpha, None, 'mean')
+            loss = sigmoid_focal_loss(x, y, gamma, alpha, None, "mean")
             loss.backward()
 
             assert np.allclose(loss.data.cpu().numpy(), output[0], 1e-2)
@@ -84,6 +107,7 @@ class Testfocalloss:
         if not torch.cuda.is_available():
             return
         from mmcv.ops import SoftmaxFocalLoss
+
         alpha = 0.25
         gamma = 2.0
         for case in inputs:
@@ -106,6 +130,7 @@ class Testfocalloss:
         if not torch.cuda.is_available():
             return
         from mmcv.ops import SigmoidFocalLoss
+
         alpha = 0.25
         gamma = 2.0
         for case in inputs:
@@ -130,45 +155,67 @@ class Testfocalloss:
     def test_softmax_half(self):
         self._test_softmax(dtype=torch.half)
 
-    @pytest.mark.parametrize('device', [
-        pytest.param(
-            'npu',
-            marks=pytest.mark.skipif(
-                not IS_NPU_AVAILABLE, reason='requires NPU support')),
-        pytest.param(
-            'cuda',
-            marks=pytest.mark.skipif(
-                not IS_CUDA_AVAILABLE, reason='requires CUDA support')),
-        pytest.param(
-            'mlu',
-            marks=pytest.mark.skipif(
-                not IS_MLU_AVAILABLE, reason='requires MLU support')),
-        pytest.param(
-            'musa',
-            marks=pytest.mark.skipif(
-                not IS_MUSA_AVAILABLE, reason='requires MUSA support'))
-    ])
+    @pytest.mark.parametrize(
+        "device",
+        [
+            pytest.param(
+                "npu",
+                marks=pytest.mark.skipif(
+                    not IS_NPU_AVAILABLE, reason="requires NPU support"
+                ),
+            ),
+            pytest.param(
+                "cuda",
+                marks=pytest.mark.skipif(
+                    not IS_CUDA_AVAILABLE, reason="requires CUDA support"
+                ),
+            ),
+            pytest.param(
+                "mlu",
+                marks=pytest.mark.skipif(
+                    not IS_MLU_AVAILABLE, reason="requires MLU support"
+                ),
+            ),
+            pytest.param(
+                "musa",
+                marks=pytest.mark.skipif(
+                    not IS_MUSA_AVAILABLE, reason="requires MUSA support"
+                ),
+            ),
+        ],
+    )
     def test_sigmoid_float(self, device):
         self._test_sigmoid(device=device, dtype=torch.float)
 
-    @pytest.mark.parametrize('device', [
-        pytest.param(
-            'npu',
-            marks=pytest.mark.skipif(
-                not IS_NPU_AVAILABLE, reason='requires NPU support')),
-        pytest.param(
-            'cuda',
-            marks=pytest.mark.skipif(
-                not IS_CUDA_AVAILABLE, reason='requires CUDA support')),
-        pytest.param(
-            'mlu',
-            marks=pytest.mark.skipif(
-                not IS_MLU_AVAILABLE, reason='requires MLU support')),
-        pytest.param(
-            'musa',
-            marks=pytest.mark.skipif(
-                not IS_MUSA_AVAILABLE, reason='requires MUSA support'))
-    ])
+    @pytest.mark.parametrize(
+        "device",
+        [
+            pytest.param(
+                "npu",
+                marks=pytest.mark.skipif(
+                    not IS_NPU_AVAILABLE, reason="requires NPU support"
+                ),
+            ),
+            pytest.param(
+                "cuda",
+                marks=pytest.mark.skipif(
+                    not IS_CUDA_AVAILABLE, reason="requires CUDA support"
+                ),
+            ),
+            pytest.param(
+                "mlu",
+                marks=pytest.mark.skipif(
+                    not IS_MLU_AVAILABLE, reason="requires MLU support"
+                ),
+            ),
+            pytest.param(
+                "musa",
+                marks=pytest.mark.skipif(
+                    not IS_MUSA_AVAILABLE, reason="requires MUSA support"
+                ),
+            ),
+        ],
+    )
     def test_sigmoid_half(self, device):
         self._test_sigmoid(device, dtype=torch.half)
 

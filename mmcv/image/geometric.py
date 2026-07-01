@@ -1,19 +1,19 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import numbers
-from typing import List, Optional, Tuple, Union, no_type_check, Literal
+import warnings
+from typing import List, Literal, Optional, Tuple, Union, no_type_check
 
-import torch
-import torchvision.transforms.v2.functional as F_tv
 import cv2
 import numpy as np
+import torch
+import torchvision.transforms.v2.functional as F_tv
 from mmengine.utils import to_2tuple
-import warnings
 
 from ..utils.math import (
     get_rotation_matrix_2d,
-    warp_affine,
     get_shear_matrix,
     get_translate_matrix,
+    warp_affine,
 )
 from .io import imread_backend
 
@@ -28,7 +28,6 @@ def get_image_chw(img: np.ndarray | torch.Tensor) -> Tuple[int, int, int]:
 
     Args:
         img (ndarray | torch.Tensor): The input image.
-
     """
     if img.ndim == 2:
         return 1, img.shape[0], img.shape[1]
@@ -139,7 +138,9 @@ def imresize(
             size[::-1],  # (w, h) -> (h, w)
             interpolation=F_tv.InterpolationMode(interpolation),
             antialias=True,
-        ).permute(1, 2, 0)  # CHW -> HWC
+        ).permute(
+            1, 2, 0
+        )  # CHW -> HWC
 
         if out is not None:
             if isinstance(out, torch.Tensor):
@@ -192,9 +193,9 @@ def imresize_to_multiple(
     out: Optional[np.ndarray | torch.Tensor] = None,
     backend: Optional[str] = None,
 ) -> Union[Tuple[np.ndarray, float, float], np.ndarray]:
-    """Resize image according to a given size or scale factor and then rounds
-    up the the resized or rescaled image size to the nearest value that can be
-    divided by the divisor.
+    """Resize image according to a given size or scale factor and then rounds up the the
+    resized or rescaled image size to the nearest value that can be divided by the
+    divisor.
 
     Args:
         img (ndarray | torch.Tensor): The input image.
@@ -412,6 +413,7 @@ def imflip_(
         else:
             return cv2.flip(img, -1, img)
 
+
 def _border_value_to_tensor(
     n_channels: int,
     border_value: Optional[
@@ -422,39 +424,56 @@ def _border_value_to_tensor(
 ) -> torch.Tensor:
     if border_value is None:
         return None
-    
+
     if isinstance(border_value, (int, float)):
-        return torch.full((n_channels,), fill_value=border_value, dtype=dtype, device=device)
+        return torch.full(
+            (n_channels,), fill_value=border_value, dtype=dtype, device=device
+        )
     elif isinstance(border_value, (list, tuple)):
         if len(border_value) == 1:
-            return torch.full((n_channels,), fill_value=border_value[0], dtype=dtype, device=device)
+            return torch.full(
+                (n_channels,), fill_value=border_value[0], dtype=dtype, device=device
+            )
         elif len(border_value) == n_channels:
             return torch.tensor(border_value, dtype=dtype, device=device)
         else:
-            raise ValueError(f"Expected 1 or {n_channels} elements in `border_value`, but got {len(border_value)}")
+            raise ValueError(
+                f"Expected 1 or {n_channels} elements in `border_value`, but got {len(border_value)}"
+            )
     elif isinstance(border_value, np.ndarray):
         if border_value.shape == (n_channels,):
             return torch.tensor(border_value, dtype=dtype, device=device)
         elif border_value.shape == (1,):
-            return torch.full((n_channels,), fill_value=border_value[0], dtype=dtype, device=device)
+            return torch.full(
+                (n_channels,), fill_value=border_value[0], dtype=dtype, device=device
+            )
         else:
-            raise ValueError(f"Expected 1 or {n_channels} elements in `border_value`, but got {border_value.shape}")
+            raise ValueError(
+                f"Expected 1 or {n_channels} elements in `border_value`, but got {border_value.shape}"
+            )
     elif isinstance(border_value, torch.Tensor):
         if border_value.shape == (n_channels,):
             return border_value
         elif border_value.shape == (1,):
-            return torch.full((n_channels,), fill_value=border_value[0], dtype=dtype, device=device)
+            return torch.full(
+                (n_channels,), fill_value=border_value[0], dtype=dtype, device=device
+            )
         else:
-            raise ValueError(f"Expected 1 or {n_channels} elements in `border_value`, but got {border_value.shape}")
+            raise ValueError(
+                f"Expected 1 or {n_channels} elements in `border_value`, but got {border_value.shape}"
+            )
     else:
         raise ValueError(f"Invalid type {type(border_value)} for `border_value`")
+
 
 def imrotate(
     img: np.ndarray | torch.Tensor,
     angle: float,
     center: Optional[Tuple[float, float]] = None,
     scale: float = 1.0,
-    border_value: Optional[Union[int, float, tuple[int, int, int], np.ndarray, torch.Tensor]] = None,
+    border_value: Optional[
+        Union[int, float, tuple[int, int, int], np.ndarray, torch.Tensor]
+    ] = None,
     interpolation: str = "bilinear",
     auto_bound: bool = False,
     border_mode: Literal["constant", "replicate", "reflect"] = "constant",
@@ -488,15 +507,17 @@ def imrotate(
 
     if isinstance(img, torch.Tensor):
 
-        border_value = _border_value_to_tensor(img_c, border_value, img.dtype, img.device)
+        border_value = _border_value_to_tensor(
+            img_c, border_value, img.dtype, img.device
+        )
 
         if border_mode == "replicate":
-            border_mode = "border"
+            border_mode = "border"  # type: ignore[assignment]
         elif border_mode == "constant":
             if border_value is None:
-                border_mode = "zeros"
+                border_mode = "zeros"  # type: ignore[assignment]
             else:
-                border_mode = "fill"
+                border_mode = "fill"  # type: ignore[assignment]
                 border_value = border_value.to(img.device, img.dtype)
 
         matrix = get_rotation_matrix_2d(center, -angle, scale, device=img.device)
@@ -521,7 +542,9 @@ def imrotate(
             interpolation=interpolation,
             padding_mode=border_mode,
             fill_value=border_value,
-        ).permute(1, 2, 0)  # CHW -> HWC
+        ).permute(
+            1, 2, 0
+        )  # CHW -> HWC
 
         if not has_channel_dim:
             rotated = rotated.squeeze(-1)
@@ -673,8 +696,8 @@ def impad(
     pad_val: Union[float, List] = 0,
     padding_mode: str = "constant",
 ) -> np.ndarray | torch.Tensor:
-    """Pad the given image to a certain shape or pad on all sides with
-    specified padding mode and padding value.
+    """Pad the given image to a certain shape or pad on all sides with specified padding
+    mode and padding value.
 
     Args:
         img (ndarray | torch.Tensor): Image to be padded.
@@ -894,7 +917,9 @@ def imshear(
     img: np.ndarray | torch.Tensor,
     magnitude: Union[int, float],
     direction: str = "horizontal",
-    border_value: Optional[Union[int, float, tuple[int, int, int], np.ndarray, torch.Tensor]] = None,
+    border_value: Optional[
+        Union[int, float, tuple[int, int, int], np.ndarray, torch.Tensor]
+    ] = None,
     interpolation: str = "bilinear",
 ) -> np.ndarray | torch.Tensor:
     """Shear an image.
@@ -921,7 +946,9 @@ def imshear(
 
     if isinstance(img, torch.Tensor):
 
-        border_value = _border_value_to_tensor(channels, border_value, img.dtype, img.device)
+        border_value = _border_value_to_tensor(
+            channels, border_value, img.dtype, img.device
+        )
 
         if border_value is None:
             padding_mode = "zeros"
@@ -953,13 +980,12 @@ def imshear(
         elif isinstance(border_value, int):
             border_value = tuple([border_value] * channels)  # type: ignore
         elif isinstance(border_value, tuple):
-            assert len(border_value) == channels, \
-                'Expected the num of elements in tuple equals the channels' \
-                'of input image. Found {} vs {}'.format(
-                    len(border_value), channels)
+            assert len(border_value) == channels, (
+                "Expected the num of elements in tuple equals the channels"
+                "of input image. Found {} vs {}".format(len(border_value), channels)
+            )
         else:
-            raise ValueError(
-                f'Invalid type {type(border_value)} for `border_value`')
+            raise ValueError(f"Invalid type {type(border_value)} for `border_value`")
 
         shear_matrix = _get_shear_matrix(magnitude, direction)
         sheared = cv2.warpAffine(
@@ -1000,7 +1026,9 @@ def imtranslate(
     img: np.ndarray | torch.Tensor,
     offset: Union[int, float],
     direction: str = "horizontal",
-    border_value: Optional[Union[int, float, tuple[int, int, int], np.ndarray, torch.Tensor]] = None,
+    border_value: Optional[
+        Union[int, float, tuple[int, int, int], np.ndarray, torch.Tensor]
+    ] = None,
     interpolation: str = "bilinear",
 ) -> np.ndarray | torch.Tensor:
     """Translate an image.
@@ -1026,7 +1054,9 @@ def imtranslate(
         channels = img.shape[-1]
 
     if isinstance(img, torch.Tensor):
-        border_value = _border_value_to_tensor(channels, border_value, img.dtype, img.device)
+        border_value = _border_value_to_tensor(
+            channels, border_value, img.dtype, img.device
+        )
 
         if border_value is None:
             padding_mode = "zeros"

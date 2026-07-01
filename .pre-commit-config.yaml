@@ -12,11 +12,10 @@ repos:
     rev: 5.11.5
     hooks:
       - id: isort
-  - repo: https://github.com/pre-commit/mirrors-yapf
-    rev: v0.32.0
+  - repo: https://github.com/psf/black-pre-commit-mirror
+    rev: 24.8.0
     hooks:
-      - id: yapf
-        additional_dependencies: [toml]
+      - id: black
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
@@ -24,7 +23,6 @@ repos:
       - id: check-yaml
       - id: end-of-file-fixer
       - id: requirements-txt-fixer
-      - id: double-quote-string-fixer
       - id: check-merge-conflict
       - id: fix-encoding-pragma
         args: ["--remove"]
@@ -43,11 +41,6 @@ repos:
           - mdformat-openmmlab
           - mdformat_frontmatter
           - linkify-it-py
-  - repo: https://github.com/myint/docformatter
-    rev: 06907d0
-    hooks:
-      - id: docformatter
-        args: ["--in-place", "--wrap-descriptions", "79"]
   - repo: https://github.com/asottile/pyupgrade
     rev: v3.0.0
     hooks:

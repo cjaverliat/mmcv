@@ -10,14 +10,16 @@ from torch.nn.modules.utils import _pair
 from ..utils import ext_loader
 
 ext_module = ext_loader.load_ext(
-    '_ext', ['roi_align_rotated_forward', 'roi_align_rotated_backward'])
+    "_ext", ["roi_align_rotated_forward", "roi_align_rotated_backward"]
+)
 
 
 class RoIAlignRotatedFunction(Function):
 
     @staticmethod
-    def symbolic(g, input, rois, output_size, spatial_scale, sampling_ratio,
-                 aligned, clockwise):
+    def symbolic(
+        g, input, rois, output_size, spatial_scale, sampling_ratio, aligned, clockwise
+    ):
         if isinstance(output_size, int):
             out_h = output_size
             out_w = output_size
@@ -27,10 +29,9 @@ class RoIAlignRotatedFunction(Function):
             assert isinstance(output_size[1], int)
             out_h, out_w = output_size
         else:
-            raise TypeError(
-                '"output_size" must be an integer or tuple of integers')
+            raise TypeError('"output_size" must be an integer or tuple of integers')
         return g.op(
-            'mmcv::MMCVRoIAlignRotated',
+            "mmcv::MMCVRoIAlignRotated",
             input,
             rois,
             output_height_i=out_h,
@@ -38,17 +39,20 @@ class RoIAlignRotatedFunction(Function):
             spatial_scale_f=spatial_scale,
             sampling_ratio_i=sampling_ratio,
             aligned_i=aligned,
-            clockwise_i=clockwise)
+            clockwise_i=clockwise,
+        )
 
     @staticmethod
-    def forward(ctx: Any,
-                input: torch.Tensor,
-                rois: torch.Tensor,
-                output_size: Union[int, tuple],
-                spatial_scale: float,
-                sampling_ratio: int = 0,
-                aligned: bool = True,
-                clockwise: bool = False) -> torch.Tensor:
+    def forward(
+        ctx: Any,
+        input: torch.Tensor,
+        rois: torch.Tensor,
+        output_size: Union[int, tuple],
+        spatial_scale: float,
+        sampling_ratio: int = 0,
+        aligned: bool = True,
+        clockwise: bool = False,
+    ) -> torch.Tensor:
         ctx.output_size = _pair(output_size)
         ctx.spatial_scale = spatial_scale
         ctx.sampling_ratio = sampling_ratio
@@ -60,8 +64,9 @@ class RoIAlignRotatedFunction(Function):
         batch_size, num_channels, data_height, data_width = input.size()
         num_rois = rois.size(0)
 
-        output = input.new_zeros(num_rois, num_channels, ctx.output_size[0],
-                                 ctx.output_size[1])
+        output = input.new_zeros(
+            num_rois, num_channels, ctx.output_size[0], ctx.output_size[1]
+        )
         ext_module.roi_align_rotated_forward(
             input,
             rois,
@@ -71,14 +76,16 @@ class RoIAlignRotatedFunction(Function):
             spatial_scale=ctx.spatial_scale,
             sampling_ratio=ctx.sampling_ratio,
             aligned=ctx.aligned,
-            clockwise=ctx.clockwise)
+            clockwise=ctx.clockwise,
+        )
         return output
 
     @staticmethod
     def backward(
         ctx: Any, grad_output: torch.Tensor
-    ) -> Tuple[Optional[torch.Tensor], Optional[torch.Tensor], None, None,
-               None, None, None]:
+    ) -> Tuple[
+        Optional[torch.Tensor], Optional[torch.Tensor], None, None, None, None, None
+    ]:
         feature_size = ctx.feature_size
         rois = ctx.saved_tensors[0]
         assert feature_size is not None
@@ -90,8 +97,9 @@ class RoIAlignRotatedFunction(Function):
         grad_input = grad_rois = None
 
         if ctx.needs_input_grad[0]:
-            grad_input = rois.new_zeros(batch_size, num_channels, data_height,
-                                        data_width)
+            grad_input = rois.new_zeros(
+                batch_size, num_channels, data_height, data_width
+            )
             ext_module.roi_align_rotated_backward(
                 grad_output.contiguous(),
                 rois,
@@ -101,7 +109,8 @@ class RoIAlignRotatedFunction(Function):
                 spatial_scale=ctx.spatial_scale,
                 sampling_ratio=ctx.sampling_ratio,
                 aligned=ctx.aligned,
-                clockwise=ctx.clockwise)
+                clockwise=ctx.clockwise,
+            )
         return grad_input, grad_rois, None, None, None, None, None
 
 
@@ -152,17 +161,17 @@ class RoIAlignRotated(nn.Module):
     """
 
     @deprecated_api_warning(
-        {
-            'out_size': 'output_size',
-            'sample_num': 'sampling_ratio'
-        },
-        cls_name='RoIAlignRotated')
-    def __init__(self,
-                 output_size: Union[int, tuple],
-                 spatial_scale: float,
-                 sampling_ratio: int = 0,
-                 aligned: bool = True,
-                 clockwise: bool = False):
+        {"out_size": "output_size", "sample_num": "sampling_ratio"},
+        cls_name="RoIAlignRotated",
+    )
+    def __init__(
+        self,
+        output_size: Union[int, tuple],
+        spatial_scale: float,
+        sampling_ratio: int = 0,
+        aligned: bool = True,
+        clockwise: bool = False,
+    ):
         super().__init__()
 
         self.output_size = _pair(output_size)
@@ -172,16 +181,21 @@ class RoIAlignRotated(nn.Module):
         self.clockwise = clockwise
 
     def forward(self, input: torch.Tensor, rois: torch.Tensor) -> torch.Tensor:
-        return RoIAlignRotatedFunction.apply(input, rois, self.output_size,
-                                             self.spatial_scale,
-                                             self.sampling_ratio, self.aligned,
-                                             self.clockwise)
+        return RoIAlignRotatedFunction.apply(
+            input,
+            rois,
+            self.output_size,
+            self.spatial_scale,
+            self.sampling_ratio,
+            self.aligned,
+            self.clockwise,
+        )
 
     def __repr__(self):
         s = self.__class__.__name__
-        s += f'(output_size={self.output_size}, '
-        s += f'spatial_scale={self.spatial_scale}, '
-        s += f'sampling_ratio={self.sampling_ratio}, '
-        s += f'aligned={self.aligned}, '
-        s += f'clockwise={self.clockwise})'
+        s += f"(output_size={self.output_size}, "
+        s += f"spatial_scale={self.spatial_scale}, "
+        s += f"sampling_ratio={self.sampling_ratio}, "
+        s += f"aligned={self.aligned}, "
+        s += f"clockwise={self.clockwise})"
         return s

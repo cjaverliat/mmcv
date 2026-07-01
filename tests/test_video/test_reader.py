@@ -22,30 +22,30 @@ class TestCache:
     def test_put(self):
         cache = mmcv.Cache(3)
         for i in range(1, 4):
-            cache.put(f'k{i}', i)
+            cache.put(f"k{i}", i)
             assert cache.size == i
-        assert cache._cache == OrderedDict([('k1', 1), ('k2', 2), ('k3', 3)])
-        cache.put('k4', 4)
+        assert cache._cache == OrderedDict([("k1", 1), ("k2", 2), ("k3", 3)])
+        cache.put("k4", 4)
         assert cache.size == 3
-        assert cache._cache == OrderedDict([('k2', 2), ('k3', 3), ('k4', 4)])
-        cache.put('k2', 2)
-        assert cache._cache == OrderedDict([('k2', 2), ('k3', 3), ('k4', 4)])
+        assert cache._cache == OrderedDict([("k2", 2), ("k3", 3), ("k4", 4)])
+        cache.put("k2", 2)
+        assert cache._cache == OrderedDict([("k2", 2), ("k3", 3), ("k4", 4)])
 
     def test_get(self):
         cache = mmcv.Cache(3)
-        assert cache.get('key_none') is None
-        assert cache.get('key_none', 0) == 0
-        cache.put('k1', 1)
-        assert cache.get('k1') == 1
+        assert cache.get("key_none") is None
+        assert cache.get("key_none", 0) == 0
+        cache.put("k1", 1)
+        assert cache.get("k1") == 1
 
 
 class TestVideoReader:
 
     @classmethod
     def setup_class(cls):
-        cls.video_path = osp.join(osp.dirname(__file__), '../data/test.mp4')
+        cls.video_path = osp.join(osp.dirname(__file__), "../data/test.mp4")
         cls.num_frames = 168
-        cls.video_url = 'https://download.openmmlab.com/mmcv/test_data/sample-mp4-file.mp4'  # noqa: E501
+        cls.video_url = "https://download.openmmlab.com/mmcv/test_data/sample-mp4-file.mp4"  # noqa: E501
 
     def test_load(self):
         # read from video file
@@ -57,6 +57,7 @@ class TestVideoReader:
         assert len(v) == self.num_frames
         assert v.opened
         import cv2
+
         assert isinstance(v.vcap, type(cv2.VideoCapture()))
 
         # read from video url
@@ -151,7 +152,7 @@ class TestVideoReader:
         v.cvt2frames(frame_dir)
         assert osp.isdir(frame_dir)
         for i in range(self.num_frames):
-            filename = f'{frame_dir}/{i:06d}.jpg'
+            filename = f"{frame_dir}/{i:06d}.jpg"
             assert osp.isfile(filename)
             os.remove(filename)
 
@@ -159,7 +160,7 @@ class TestVideoReader:
         v.cvt2frames(frame_dir, show_progress=False)
         assert osp.isdir(frame_dir)
         for i in range(self.num_frames):
-            filename = f'{frame_dir}/{i:06d}.jpg'
+            filename = f"{frame_dir}/{i:06d}.jpg"
             assert osp.isfile(filename)
             os.remove(filename)
 
@@ -167,12 +168,13 @@ class TestVideoReader:
         v.cvt2frames(
             frame_dir,
             file_start=100,
-            filename_tmpl='{:03d}.JPEG',
+            filename_tmpl="{:03d}.JPEG",
             start=100,
-            max_num=20)
+            max_num=20,
+        )
         assert osp.isdir(frame_dir)
         for i in range(100, 120):
-            filename = f'{frame_dir}/{i:03d}.JPEG'
+            filename = f"{frame_dir}/{i:03d}.JPEG"
             assert osp.isfile(filename)
             os.remove(filename)
         shutil.rmtree(frame_dir)
@@ -183,28 +185,24 @@ class TestVideoReader:
         v.cvt2frames(frame_dir)
         assert osp.isdir(frame_dir)
         for i in range(self.num_frames):
-            filename = f'{frame_dir}/{i:06d}.jpg'
+            filename = f"{frame_dir}/{i:06d}.jpg"
             assert osp.isfile(filename)
 
-        out_filename = osp.join(tempfile.gettempdir(), 'mmcv_test.avi')
+        out_filename = osp.join(tempfile.gettempdir(), "mmcv_test.avi")
         mmcv.frames2video(frame_dir, out_filename)
         v = mmcv.VideoReader(out_filename)
         assert v.fps == 30
         assert len(v) == self.num_frames
 
         mmcv.frames2video(
-            frame_dir,
-            out_filename,
-            fps=25,
-            start=10,
-            end=50,
-            show_progress=False)
+            frame_dir, out_filename, fps=25, start=10, end=50, show_progress=False
+        )
 
         with mmcv.VideoReader(out_filename) as v:
             assert v.fps == 25
             assert len(v) == 40
 
             for i in range(self.num_frames):
-                filename = f'{frame_dir}/{i:06d}.jpg'
+                filename = f"{frame_dir}/{i:06d}.jpg"
                 os.remove(filename)
             shutil.rmtree(frame_dir)

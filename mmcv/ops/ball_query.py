@@ -7,7 +7,8 @@ from torch.autograd import Function
 from ..utils import ext_loader
 
 ext_module = ext_loader.load_ext(
-    '_ext', ['ball_query_forward', 'stack_ball_query_forward'])
+    "_ext", ["ball_query_forward", "stack_ball_query_forward"]
+)
 
 
 class BallQuery(Function):
@@ -15,14 +16,14 @@ class BallQuery(Function):
 
     @staticmethod
     def forward(
-            ctx,
-            min_radius: float,
-            max_radius: float,
-            sample_num: int,
-            xyz: torch.Tensor,
-            center_xyz: torch.Tensor,
-            xyz_batch_cnt: Optional[torch.Tensor] = None,
-            center_xyz_batch_cnt: Optional[torch.Tensor] = None
+        ctx,
+        min_radius: float,
+        max_radius: float,
+        sample_num: int,
+        xyz: torch.Tensor,
+        center_xyz: torch.Tensor,
+        xyz_batch_cnt: Optional[torch.Tensor] = None,
+        center_xyz_batch_cnt: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         """
         Args:
@@ -50,8 +51,9 @@ class BallQuery(Function):
         if xyz_batch_cnt is not None and center_xyz_batch_cnt is not None:
             assert xyz_batch_cnt.dtype == torch.int
             assert center_xyz_batch_cnt.dtype == torch.int
-            idx = center_xyz.new_zeros((center_xyz.shape[0], sample_num),
-                                       dtype=torch.int32)
+            idx = center_xyz.new_zeros(
+                (center_xyz.shape[0], sample_num), dtype=torch.int32
+            )
             ext_module.stack_ball_query_forward(
                 center_xyz,
                 center_xyz_batch_cnt,
@@ -74,8 +76,9 @@ class BallQuery(Function):
                 m=npoint,
                 min_radius=min_radius,
                 max_radius=max_radius,
-                nsample=sample_num)
-        if torch.__version__ != 'parrots':
+                nsample=sample_num,
+            )
+        if torch.__version__ != "parrots":
             ctx.mark_non_differentiable(idx)
         return idx
 

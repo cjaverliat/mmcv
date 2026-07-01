@@ -1,31 +1,77 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 from .base import BaseTransform
 from .builder import TRANSFORMS
-from .loading import LoadAnnotations, LoadImageFromFile, LoadImage
-from .processing import (CenterCrop, MultiScaleFlipAug, Normalize, Pad,
-                         RandomChoiceResize, RandomFlip, RandomGrayscale,
-                         RandomResize, Resize, TestTimeAug)
-from .wrappers import (Compose, KeyMapper, RandomApply, RandomChoice,
-                       TransformBroadcaster)
+from .loading import LoadAnnotations, LoadImage, LoadImageFromFile
+from .processing import (
+    CenterCrop,
+    MultiScaleFlipAug,
+    Normalize,
+    Pad,
+    RandomChoiceResize,
+    RandomFlip,
+    RandomGrayscale,
+    RandomResize,
+    Resize,
+    TestTimeAug,
+)
+from .wrappers import (
+    Compose,
+    KeyMapper,
+    RandomApply,
+    RandomChoice,
+    TransformBroadcaster,
+)
 
 try:
     import torch  # noqa: F401
 except ImportError:
     __all__ = [
-        'BaseTransform', 'TRANSFORMS', 'TransformBroadcaster', 'Compose',
-        'RandomChoice', 'KeyMapper', 'LoadImageFromFile', 'LoadAnnotations',
-        'LoadImage', 'Normalize', 'Resize', 'Pad', 'RandomFlip',
-        'RandomChoiceResize', 'CenterCrop', 'RandomGrayscale',
-        'MultiScaleFlipAug', 'RandomResize', 'RandomApply', 'TestTimeAug'
+        "BaseTransform",
+        "TRANSFORMS",
+        "TransformBroadcaster",
+        "Compose",
+        "RandomChoice",
+        "KeyMapper",
+        "LoadImageFromFile",
+        "LoadAnnotations",
+        "LoadImage",
+        "Normalize",
+        "Resize",
+        "Pad",
+        "RandomFlip",
+        "RandomChoiceResize",
+        "CenterCrop",
+        "RandomGrayscale",
+        "MultiScaleFlipAug",
+        "RandomResize",
+        "RandomApply",
+        "TestTimeAug",
     ]
 else:
     from .formatting import ImageToTensor, ToTensor, to_tensor
 
     __all__ = [
-        'BaseTransform', 'TRANSFORMS', 'TransformBroadcaster', 'Compose',
-        'RandomChoice', 'KeyMapper', 'LoadImageFromFile', 'LoadAnnotations',
-        'LoadImage', 'Normalize', 'Resize', 'Pad', 'ToTensor', 'to_tensor',
-        'ImageToTensor', 'RandomFlip', 'RandomChoiceResize', 'CenterCrop',
-        'RandomGrayscale', 'MultiScaleFlipAug', 'RandomResize',
-        'RandomApply', 'TestTimeAug'
+        "BaseTransform",
+        "TRANSFORMS",
+        "TransformBroadcaster",
+        "Compose",
+        "RandomChoice",
+        "KeyMapper",
+        "LoadImageFromFile",
+        "LoadAnnotations",
+        "LoadImage",
+        "Normalize",
+        "Resize",
+        "Pad",
+        "ToTensor",
+        "to_tensor",
+        "ImageToTensor",
+        "RandomFlip",
+        "RandomChoiceResize",
+        "CenterCrop",
+        "RandomGrayscale",
+        "MultiScaleFlipAug",
+        "RandomResize",
+        "RandomApply",
+        "TestTimeAug",
     ]

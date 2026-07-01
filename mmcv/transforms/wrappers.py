@@ -68,8 +68,10 @@ class Compose(BaseTransform):
             elif callable(transform):
                 self.transforms.append(transform)
             else:
-                raise TypeError('transform must be callable or a dict, but got'
-                                f' {type(transform)}')
+                raise TypeError(
+                    "transform must be callable or a dict, but got"
+                    f" {type(transform)}"
+                )
 
     def __iter__(self):
         """Allow easy iteration over the transform sequence."""
@@ -92,17 +94,17 @@ class Compose(BaseTransform):
 
     def __repr__(self):
         """Compute the string representation."""
-        format_string = self.__class__.__name__ + '('
+        format_string = self.__class__.__name__ + "("
         for t in self.transforms:
-            format_string += f'\n    {t}'
-        format_string += '\n)'
+            format_string += f"\n    {t}"
+        format_string += "\n)"
         return format_string
 
 
 @TRANSFORMS.register_module()
 class KeyMapper(BaseTransform):
-    """A transform wrapper to map and reorganize the input/output of the
-    wrapped transforms (or sub-pipeline).
+    """A transform wrapper to map and reorganize the input/output of the wrapped
+    transforms (or sub-pipeline).
 
     Args:
         transforms (list[dict | callable], optional): Sequence of transform
@@ -176,12 +178,14 @@ class KeyMapper(BaseTransform):
         >>> ]
     """
 
-    def __init__(self,
-                 transforms: Union[Transform, List[Transform], None] = None,
-                 mapping: Optional[Dict] = None,
-                 remapping: Optional[Dict] = None,
-                 auto_remap: Optional[bool] = None,
-                 allow_nonexist_keys: bool = False):
+    def __init__(
+        self,
+        transforms: Union[Transform, List[Transform], None] = None,
+        mapping: Optional[Dict] = None,
+        remapping: Optional[Dict] = None,
+        auto_remap: Optional[bool] = None,
+        allow_nonexist_keys: bool = False,
+    ):
 
         super().__init__()
 
@@ -194,8 +198,10 @@ class KeyMapper(BaseTransform):
 
         if self.auto_remap:
             if remapping is not None:
-                raise ValueError('KeyMapper: ``remapping`` must be None if'
-                                 '`auto_remap` is set True.')
+                raise ValueError(
+                    "KeyMapper: ``remapping`` must be None if"
+                    "`auto_remap` is set True."
+                )
             self.remapping = mapping
         else:
             self.remapping = remapping
@@ -208,10 +214,9 @@ class KeyMapper(BaseTransform):
         """Allow easy iteration over the transform sequence."""
         return iter(self.transforms)
 
-    def _map_input(self, data: Dict,
-                   mapping: Optional[Dict]) -> Dict[str, Any]:
-        """KeyMapper inputs for the wrapped transforms by gathering and
-        renaming data items according to the mapping.
+    def _map_input(self, data: Dict, mapping: Optional[Dict]) -> Dict[str, Any]:
+        """KeyMapper inputs for the wrapped transforms by gathering and renaming data
+        items according to the mapping.
 
         Args:
             data (dict): The original input data
@@ -256,10 +261,9 @@ class KeyMapper(BaseTransform):
 
         return inputs
 
-    def _map_output(self, data: Dict,
-                    remapping: Optional[Dict]) -> Dict[str, Any]:
-        """KeyMapper outputs from the wrapped transforms by gathering and
-        renaming data items according to the remapping.
+    def _map_output(self, data: Dict, remapping: Optional[Dict]) -> Dict[str, Any]:
+        """KeyMapper outputs from the wrapped transforms by gathering and renaming data
+        items according to the remapping.
 
         Args:
             data (dict): The output of the wrapped pipeline.
@@ -321,8 +325,9 @@ class KeyMapper(BaseTransform):
 
         if outputs is None:
             raise ValueError(
-                f'Transforms wrapped by {self.__class__.__name__} should '
-                'not return None.')
+                f"Transforms wrapped by {self.__class__.__name__} should "
+                "not return None."
+            )
 
         results.update(outputs)  # type: ignore
         return results
@@ -342,18 +347,18 @@ class KeyMapper(BaseTransform):
 
     def __repr__(self) -> str:
         repr_str = self.__class__.__name__
-        repr_str += f'(transforms = {self.transforms}'
-        repr_str += f', mapping = {self.mapping}'
-        repr_str += f', remapping = {self.remapping}'
-        repr_str += f', auto_remap = {self.auto_remap}'
-        repr_str += f', allow_nonexist_keys = {self.allow_nonexist_keys})'
+        repr_str += f"(transforms = {self.transforms}"
+        repr_str += f", mapping = {self.mapping}"
+        repr_str += f", remapping = {self.remapping}"
+        repr_str += f", auto_remap = {self.auto_remap}"
+        repr_str += f", allow_nonexist_keys = {self.allow_nonexist_keys})"
         return repr_str
 
 
 @TRANSFORMS.register_module()
 class TransformBroadcaster(KeyMapper):
-    """A transform wrapper to apply the wrapped transforms to multiple data
-    items. For example, apply Resize to multiple images.
+    """A transform wrapper to apply the wrapped transforms to multiple data items. For
+    example, apply Resize to multiple images.
 
     Args:
         transforms (list[dict | callable]): Sequence of transform object or
@@ -446,15 +451,18 @@ class TransformBroadcaster(KeyMapper):
         >>>    ]
     """
 
-    def __init__(self,
-                 transforms: List[Union[Dict, Callable[[Dict], Dict]]],
-                 mapping: Optional[Dict] = None,
-                 remapping: Optional[Dict] = None,
-                 auto_remap: Optional[bool] = None,
-                 allow_nonexist_keys: bool = False,
-                 share_random_params: bool = False):
-        super().__init__(transforms, mapping, remapping, auto_remap,
-                         allow_nonexist_keys)
+    def __init__(
+        self,
+        transforms: List[Union[Dict, Callable[[Dict], Dict]]],
+        mapping: Optional[Dict] = None,
+        remapping: Optional[Dict] = None,
+        auto_remap: Optional[bool] = None,
+        allow_nonexist_keys: bool = False,
+        share_random_params: bool = False,
+    ):
+        super().__init__(
+            transforms, mapping, remapping, auto_remap, allow_nonexist_keys
+        )
 
         self.share_random_params = share_random_params
 
@@ -475,14 +483,16 @@ class TransformBroadcaster(KeyMapper):
             assert isinstance(data[key], Sequence)
             if seq_len:
                 if len(data[key]) != seq_len:
-                    raise ValueError('Got inconsistent sequence length: '
-                                     f'{seq_len} ({key_rep}) vs. '
-                                     f'{len(data[key])} ({key})')
+                    raise ValueError(
+                        "Got inconsistent sequence length: "
+                        f"{seq_len} ({key_rep}) vs. "
+                        f"{len(data[key])} ({key})"
+                    )
             else:
                 seq_len = len(data[key])
                 key_rep = key
 
-        assert seq_len > 0, 'Fail to get the number of broadcasting targets'
+        assert seq_len > 0, "Fail to get the number of broadcasting targets"
 
         scatters = []
         for i in range(seq_len):  # type: ignore
@@ -530,12 +540,12 @@ class TransformBroadcaster(KeyMapper):
 
     def __repr__(self) -> str:
         repr_str = self.__class__.__name__
-        repr_str += f'(transforms = {self.transforms}'
-        repr_str += f', mapping = {self.mapping}'
-        repr_str += f', remapping = {self.remapping}'
-        repr_str += f', auto_remap = {self.auto_remap}'
-        repr_str += f', allow_nonexist_keys = {self.allow_nonexist_keys}'
-        repr_str += f', share_random_params = {self.share_random_params})'
+        repr_str += f"(transforms = {self.transforms}"
+        repr_str += f", mapping = {self.mapping}"
+        repr_str += f", remapping = {self.remapping}"
+        repr_str += f", auto_remap = {self.auto_remap}"
+        repr_str += f", allow_nonexist_keys = {self.allow_nonexist_keys}"
+        repr_str += f", share_random_params = {self.share_random_params})"
         return repr_str
 
 
@@ -563,17 +573,20 @@ class RandomChoice(BaseTransform):
         >>> ]
     """
 
-    def __init__(self,
-                 transforms: List[Union[Transform, List[Transform]]],
-                 prob: Optional[List[float]] = None):
+    def __init__(
+        self,
+        transforms: List[Union[Transform, List[Transform]]],
+        prob: Optional[List[float]] = None,
+    ):
 
         super().__init__()
 
         if prob is not None:
             assert mmengine.is_seq_of(prob, float)
-            assert len(transforms) == len(prob), \
-                '``transforms`` and ``prob`` must have same lengths. ' \
-                f'Got {len(transforms)} vs {len(prob)}.'
+            assert len(transforms) == len(prob), (
+                "``transforms`` and ``prob`` must have same lengths. "
+                f"Got {len(transforms)} vs {len(prob)}."
+            )
             assert sum(prob) == 1
 
         self.prob = prob
@@ -595,8 +608,8 @@ class RandomChoice(BaseTransform):
 
     def __repr__(self) -> str:
         repr_str = self.__class__.__name__
-        repr_str += f'(transforms = {self.transforms}'
-        repr_str += f'prob = {self.prob})'
+        repr_str += f"(transforms = {self.transforms}"
+        repr_str += f"prob = {self.prob})"
         return repr_str
 
 
@@ -618,9 +631,9 @@ class RandomApply(BaseTransform):
         >>> ]
     """
 
-    def __init__(self,
-                 transforms: Union[Transform, List[Transform]],
-                 prob: float = 0.5):
+    def __init__(
+        self, transforms: Union[Transform, List[Transform]], prob: float = 0.5
+    ):
 
         super().__init__()
         self.prob = prob
@@ -631,8 +644,7 @@ class RandomApply(BaseTransform):
 
     @cache_randomness
     def random_apply(self) -> bool:
-        """Return a random bool value indicating whether apply the
-        transform."""
+        """Return a random bool value indicating whether apply the transform."""
         return np.random.rand() < self.prob
 
     def transform(self, results: Dict) -> Optional[Dict]:
@@ -644,6 +656,6 @@ class RandomApply(BaseTransform):
 
     def __repr__(self) -> str:
         repr_str = self.__class__.__name__
-        repr_str += f'(transforms = {self.transforms}'
-        repr_str += f', prob = {self.prob})'
+        repr_str += f"(transforms = {self.transforms}"
+        repr_str += f", prob = {self.prob})"
         return repr_str

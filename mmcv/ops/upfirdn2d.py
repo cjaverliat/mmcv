@@ -15,7 +15,7 @@ import torch
 from ..utils import ext_loader
 from .conv2d_gradfix import conv2d
 
-ext_module = ext_loader.load_ext('_ext', ['upfirdn2d'])
+ext_module = ext_loader.load_ext("_ext", ["upfirdn2d"])
 
 
 def _parse_scaling(scaling):
@@ -55,14 +55,16 @@ def _get_filter_size(filter):
     return fw, fh
 
 
-def upfirdn2d(input: torch.Tensor,
-              filter: torch.Tensor,
-              up: int = 1,
-              down: int = 1,
-              padding: Union[int, List[int]] = 0,
-              flip_filter: bool = False,
-              gain: Union[float, int] = 1,
-              use_custom_op: bool = True):
+def upfirdn2d(
+    input: torch.Tensor,
+    filter: torch.Tensor,
+    up: int = 1,
+    down: int = 1,
+    padding: Union[int, List[int]] = 0,
+    flip_filter: bool = False,
+    gain: Union[float, int] = 1,
+    use_custom_op: bool = True,
+):
     """Pad, upsample, filter, and downsample a batch of 2D images.
 
     Performs the following sequence of operations for each channel:
@@ -109,20 +111,14 @@ def upfirdn2d(input: torch.Tensor,
         Tensor of the shape `[batch_size, num_channels, out_height, out_width]`
     """
     assert isinstance(input, torch.Tensor)
-    if use_custom_op and input.device.type == 'cuda':
+    if use_custom_op and input.device.type == "cuda":
         return _upfirdn2d_cuda(
-            up=up,
-            down=down,
-            padding=padding,
-            flip_filter=flip_filter,
-            gain=gain).apply(input, filter)
-    elif use_custom_op and input.device.type == 'musa':
+            up=up, down=down, padding=padding, flip_filter=flip_filter, gain=gain
+        ).apply(input, filter)
+    elif use_custom_op and input.device.type == "musa":
         return _upfirdn2d_musa(
-            up=up,
-            down=down,
-            padding=padding,
-            flip_filter=flip_filter,
-            gain=gain).apply(input, filter)
+            up=up, down=down, padding=padding, flip_filter=flip_filter, gain=gain
+        ).apply(input, filter)
     return _upfirdn2d_ref(
         input,
         filter,
@@ -130,18 +126,20 @@ def upfirdn2d(input: torch.Tensor,
         down=down,
         padding=padding,
         flip_filter=flip_filter,
-        gain=gain)
+        gain=gain,
+    )
 
 
-def _upfirdn2d_ref(input: torch.Tensor,
-                   filter: torch.Tensor,
-                   up: int = 1,
-                   down: int = 1,
-                   padding: Union[int, List[int]] = 0,
-                   flip_filter: bool = False,
-                   gain: Union[float, int] = 1):
-    """Slow reference implementation of `upfirdn2d()` using standard PyTorch
-    ops.
+def _upfirdn2d_ref(
+    input: torch.Tensor,
+    filter: torch.Tensor,
+    up: int = 1,
+    down: int = 1,
+    padding: Union[int, List[int]] = 0,
+    flip_filter: bool = False,
+    gain: Union[float, int] = 1,
+):
+    """Slow reference implementation of `upfirdn2d()` using standard PyTorch ops.
 
     Args:
         input (torch.Tensor): Float32/float64/float16 input tensor of the shape
@@ -188,16 +186,17 @@ def _upfirdn2d_ref(input: torch.Tensor,
 
     # Pad or crop.
     x = torch.nn.functional.pad(
-        x, [max(padx0, 0),
-            max(padx1, 0),
-            max(pady0, 0),
-            max(pady1, 0)])
-    x = x[:, :,
-          max(-pady0, 0):x.shape[2] - max(-pady1, 0),
-          max(-padx0, 0):x.shape[3] - max(-padx1, 0)]
+        x, [max(padx0, 0), max(padx1, 0), max(pady0, 0), max(pady1, 0)]
+    )
+    x = x[
+        :,
+        :,
+        max(-pady0, 0) : x.shape[2] - max(-pady1, 0),
+        max(-padx0, 0) : x.shape[3] - max(-padx1, 0),
+    ]
 
     # Setup filter.
-    filter = filter * (gain**(filter.ndim / 2))
+    filter = filter * (gain ** (filter.ndim / 2))
     filter = filter.to(x.dtype)
     if not flip_filter:
         filter = filter.flip(list(range(filter.ndim)))
@@ -218,11 +217,13 @@ def _upfirdn2d_ref(input: torch.Tensor,
 _upfirdn2d_cuda_cache: Dict = dict()
 
 
-def _upfirdn2d_cuda(up: int = 1,
-                    down: int = 1,
-                    padding: Union[int, List[int]] = 0,
-                    flip_filter: bool = False,
-                    gain: Union[float, int] = 1):
+def _upfirdn2d_cuda(
+    up: int = 1,
+    down: int = 1,
+    padding: Union[int, List[int]] = 0,
+    flip_filter: bool = False,
+    gain: Union[float, int] = 1,
+):
     """Fast CUDA implementation of `upfirdn2d()` using custom ops.
 
     Args:
@@ -248,8 +249,7 @@ def _upfirdn2d_cuda(up: int = 1,
     padx0, padx1, pady0, pady1 = _parse_padding(padding)
 
     # Lookup from cache.
-    key = (upx, upy, downx, downy, padx0, padx1, pady0, pady1, flip_filter,
-           gain)
+    key = (upx, upy, downx, downy, padx0, padx1, pady0, pady1, flip_filter, gain)
     if key in _upfirdn2d_cuda_cache:
         return _upfirdn2d_cuda_cache[key]
 
@@ -262,26 +262,60 @@ def _upfirdn2d_cuda(up: int = 1,
             if f is None:
                 f = torch.ones([1, 1], dtype=torch.float32, device=x.device)
             if f.ndim == 1 and f.shape[0] == 1:
-                f = f.square().unsqueeze(
-                    0)  # Convert separable-1 into full-1x1.
+                f = f.square().unsqueeze(0)  # Convert separable-1 into full-1x1.
             assert isinstance(f, torch.Tensor) and f.ndim in [1, 2]
             y = x
             if f.ndim == 2:
-                y = ext_module.upfirdn2d(y, f, upx, upy, downx, downy, padx0,
-                                         padx1, pady0, pady1, flip_filter,
-                                         gain)
+                y = ext_module.upfirdn2d(
+                    y,
+                    f,
+                    upx,
+                    upy,
+                    downx,
+                    downy,
+                    padx0,
+                    padx1,
+                    pady0,
+                    pady1,
+                    flip_filter,
+                    gain,
+                )
             else:
-                y = ext_module.upfirdn2d(y, f.unsqueeze(0), upx, 1, downx, 1,
-                                         padx0, padx1, 0, 0, flip_filter, 1.0)
-                y = ext_module.upfirdn2d(y, f.unsqueeze(1), 1, upy, 1, downy,
-                                         0, 0, pady0, pady1, flip_filter, gain)
+                y = ext_module.upfirdn2d(
+                    y,
+                    f.unsqueeze(0),
+                    upx,
+                    1,
+                    downx,
+                    1,
+                    padx0,
+                    padx1,
+                    0,
+                    0,
+                    flip_filter,
+                    1.0,
+                )
+                y = ext_module.upfirdn2d(
+                    y,
+                    f.unsqueeze(1),
+                    1,
+                    upy,
+                    1,
+                    downy,
+                    0,
+                    0,
+                    pady0,
+                    pady1,
+                    flip_filter,
+                    gain,
+                )
             ctx.save_for_backward(f)
             ctx.x_shape = x.shape
             return y
 
         @staticmethod
         def backward(ctx, dy):  # pylint: disable=arguments-differ
-            f, = ctx.saved_tensors
+            (f,) = ctx.saved_tensors
             _, _, ih, iw = ctx.x_shape
             _, _, oh, ow = dy.shape
             fw, fh = _get_filter_size(f)
@@ -300,7 +334,8 @@ def _upfirdn2d_cuda(up: int = 1,
                     down=up,
                     padding=p,
                     flip_filter=(not flip_filter),
-                    gain=gain).apply(dy, f)
+                    gain=gain,
+                ).apply(dy, f)
 
             assert not ctx.needs_input_grad[1]
             return dx, df
@@ -313,11 +348,13 @@ def _upfirdn2d_cuda(up: int = 1,
 _upfirdn2d_musa_cache: Dict = dict()
 
 
-def _upfirdn2d_musa(up: int = 1,
-                    down: int = 1,
-                    padding: Union[int, List[int]] = 0,
-                    flip_filter: bool = False,
-                    gain: Union[float, int] = 1):
+def _upfirdn2d_musa(
+    up: int = 1,
+    down: int = 1,
+    padding: Union[int, List[int]] = 0,
+    flip_filter: bool = False,
+    gain: Union[float, int] = 1,
+):
     """Fast MUSA implementation of `upfirdn2d()` using custom ops.
 
     Args:
@@ -343,8 +380,7 @@ def _upfirdn2d_musa(up: int = 1,
     padx0, padx1, pady0, pady1 = _parse_padding(padding)
 
     # Lookup from cache.
-    key = (upx, upy, downx, downy, padx0, padx1, pady0, pady1, flip_filter,
-           gain)
+    key = (upx, upy, downx, downy, padx0, padx1, pady0, pady1, flip_filter, gain)
     if key in _upfirdn2d_musa_cache:
         return _upfirdn2d_musa_cache[key]
 
@@ -357,26 +393,60 @@ def _upfirdn2d_musa(up: int = 1,
             if f is None:
                 f = torch.ones([1, 1], dtype=torch.float32, device=x.device)
             if f.ndim == 1 and f.shape[0] == 1:
-                f = f.square().unsqueeze(
-                    0)  # Convert separable-1 into full-1x1.
+                f = f.square().unsqueeze(0)  # Convert separable-1 into full-1x1.
             assert isinstance(f, torch.Tensor) and f.ndim in [1, 2]
             y = x
             if f.ndim == 2:
-                y = ext_module.upfirdn2d(y, f, upx, upy, downx, downy, padx0,
-                                         padx1, pady0, pady1, flip_filter,
-                                         gain)
+                y = ext_module.upfirdn2d(
+                    y,
+                    f,
+                    upx,
+                    upy,
+                    downx,
+                    downy,
+                    padx0,
+                    padx1,
+                    pady0,
+                    pady1,
+                    flip_filter,
+                    gain,
+                )
             else:
-                y = ext_module.upfirdn2d(y, f.unsqueeze(0), upx, 1, downx, 1,
-                                         padx0, padx1, 0, 0, flip_filter, 1.0)
-                y = ext_module.upfirdn2d(y, f.unsqueeze(1), 1, upy, 1, downy,
-                                         0, 0, pady0, pady1, flip_filter, gain)
+                y = ext_module.upfirdn2d(
+                    y,
+                    f.unsqueeze(0),
+                    upx,
+                    1,
+                    downx,
+                    1,
+                    padx0,
+                    padx1,
+                    0,
+                    0,
+                    flip_filter,
+                    1.0,
+                )
+                y = ext_module.upfirdn2d(
+                    y,
+                    f.unsqueeze(1),
+                    1,
+                    upy,
+                    1,
+                    downy,
+                    0,
+                    0,
+                    pady0,
+                    pady1,
+                    flip_filter,
+                    gain,
+                )
             ctx.save_for_backward(f)
             ctx.x_shape = x.shape
             return y
 
         @staticmethod
         def backward(ctx, dy):  # pylint: disable=arguments-differ
-            f, = ctx.saved_tensors
+            (f,) = ctx.saved_tensors
             _, _, ih, iw = ctx.x_shape
             _, _, oh, ow = dy.shape
             fw, fh = _get_filter_size(f)
@@ -395,7 +465,8 @@ def _upfirdn2d_musa(up: int = 1,
                     down=up,
                     padding=p,
                     flip_filter=(not flip_filter),
-                    gain=gain).apply(dy, f)
+                    gain=gain,
+                ).apply(dy, f)
 
             assert not ctx.needs_input_grad[1]
             return dx, df
@@ -405,12 +476,14 @@ def _upfirdn2d_musa(up: int = 1,
     return Upfirdn2dMusa
 
 
-def filter2d(input: torch.Tensor,
-             filter: torch.Tensor,
-             padding: Union[int, List[int]] = 0,
-             flip_filter: bool = False,
-             gain: Union[float, int] = 1,
-             use_custom_op: bool = True):
+def filter2d(
+    input: torch.Tensor,
+    filter: torch.Tensor,
+    padding: Union[int, List[int]] = 0,
+    flip_filter: bool = False,
+    gain: Union[float, int] = 1,
+    use_custom_op: bool = True,
+):
     """Filter a batch of 2D images using the given 2D FIR filter.
 
     By default, the result is padded so that its shape matches the input.
@@ -451,16 +524,19 @@ def filter2d(input: torch.Tensor,
         padding=p,
         flip_filter=flip_filter,
         gain=gain,
-        use_custom_op=use_custom_op)
+        use_custom_op=use_custom_op,
+    )
 
 
-def upsample2d(input: torch.Tensor,
-               filter: torch.Tensor,
-               up: int = 2,
-               padding: Union[int, List[int]] = 0,
-               flip_filter: bool = False,
-               gain: Union[float, int] = 1,
-               use_custom_op: bool = True):
+def upsample2d(
+    input: torch.Tensor,
+    filter: torch.Tensor,
+    up: int = 2,
+    padding: Union[int, List[int]] = 0,
+    flip_filter: bool = False,
+    gain: Union[float, int] = 1,
+    use_custom_op: bool = True,
+):
     """Upsample a batch of 2D images using the given 2D FIR filter.
 
     By default, the result is padded so that its shape is a multiple of the
@@ -505,16 +581,19 @@ def upsample2d(input: torch.Tensor,
         padding=p,
         flip_filter=flip_filter,
         gain=gain * upx * upy,
-        use_custom_op=use_custom_op)
+        use_custom_op=use_custom_op,
+    )
 
 
-def downsample2d(input: torch.Tensor,
-                 filter: torch.Tensor,
-                 down: int = 2,
-                 padding: Union[int, List[int]] = 0,
-                 flip_filter: bool = False,
-                 gain: Union[float, int] = 1,
-                 use_custom_op: bool = True):
+def downsample2d(
+    input: torch.Tensor,
+    filter: torch.Tensor,
+    down: int = 2,
+    padding: Union[int, List[int]] = 0,
+    flip_filter: bool = False,
+    gain: Union[float, int] = 1,
+    use_custom_op: bool = True,
+):
     """Downsample a batch of 2D images using the given 2D FIR filter.
 
     By default, the result is padded so that its shape is a fraction of the
@@ -559,4 +638,5 @@ def downsample2d(input: torch.Tensor,
         padding=p,
         flip_filter=flip_filter,
         gain=gain,
-        use_custom_op=use_custom_op)
+        use_custom_op=use_custom_op,
+    )

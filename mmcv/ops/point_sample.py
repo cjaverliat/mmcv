@@ -9,12 +9,12 @@ from torch import Tensor
 from torch.nn.modules.utils import _pair
 
 
-def bilinear_grid_sample(im: Tensor,
-                         grid: Tensor,
-                         align_corners: bool = False) -> Tensor:
-    """Given an input and a flow-field grid, computes the output using input
-    values and pixel locations from grid. Supported only bilinear interpolation
-    method to sample the input pixels.
+def bilinear_grid_sample(
+    im: Tensor, grid: Tensor, align_corners: bool = False
+) -> Tensor:
+    """Given an input and a flow-field grid, computes the output using input values and
+    pixel locations from grid. Supported only bilinear interpolation method to sample
+    the input pixels.
 
     Args:
         im (torch.Tensor): Input feature map, shape (N, C, H, W)
@@ -56,7 +56,7 @@ def bilinear_grid_sample(im: Tensor,
     wd = ((x - x0) * (y - y0)).unsqueeze(1)
 
     # Apply default for grid_sample function zero padding
-    im_padded = F.pad(im, pad=[1, 1, 1, 1], mode='constant', value=0)
+    im_padded = F.pad(im, pad=[1, 1, 1, 1], mode="constant", value=0)
     padded_h = h + 2
     padded_w = w + 2
     # save points positions after padding
@@ -113,10 +113,8 @@ def denormalize(grid: Tensor) -> Tensor:
     return grid * 2.0 - 1.0
 
 
-def generate_grid(num_grid: int, size: Tuple[int, int],
-                  device: torch.device) -> Tensor:
-    """Generate regular square grid of points in [0, 1] x [0, 1] coordinate
-    space.
+def generate_grid(num_grid: int, size: Tuple[int, int], device: torch.device) -> Tensor:
+    """Generate regular square grid of points in [0, 1] x [0, 1] coordinate space.
 
     Args:
         num_grid (int): The number of grids to sample, one for each region.
@@ -128,17 +126,15 @@ def generate_grid(num_grid: int, size: Tuple[int, int],
         contains coordinates for the regular grids.
     """
 
-    affine_trans = torch.tensor([[[1., 0., 0.], [0., 1., 0.]]], device=device)
-    grid = F.affine_grid(
-        affine_trans, torch.Size((1, 1, *size)), align_corners=False)
+    affine_trans = torch.tensor([[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]], device=device)
+    grid = F.affine_grid(affine_trans, torch.Size((1, 1, *size)), align_corners=False)
     grid = normalize(grid)
     return grid.view(1, -1, 2).expand(num_grid, -1, -1)
 
 
-def rel_roi_point_to_abs_img_point(rois: Tensor,
-                                   rel_roi_points: Tensor) -> Tensor:
-    """Convert roi based relative point coordinates to image based absolute
-    point coordinates.
+def rel_roi_point_to_abs_img_point(rois: Tensor, rel_roi_points: Tensor) -> Tensor:
+    """Convert roi based relative point coordinates to image based absolute point
+    coordinates.
 
     Args:
         rois (torch.Tensor): RoIs or BBoxes, shape (N, 4) or (N, 5)
@@ -168,8 +164,7 @@ def rel_roi_point_to_abs_img_point(rois: Tensor,
 
 
 def get_shape_from_feature_map(x: Tensor) -> Tensor:
-    """Get spatial resolution of input feature map considering exporting to
-    onnx mode.
+    """Get spatial resolution of input feature map considering exporting to onnx mode.
 
     Args:
         x (torch.Tensor): Input tensor, shape (N, C, H, W)
@@ -177,14 +172,13 @@ def get_shape_from_feature_map(x: Tensor) -> Tensor:
     Returns:
         torch.Tensor: Spatial resolution (width, height), shape (1, 1, 2)
     """
-    img_shape = torch.tensor(x.shape[2:]).flip(0).view(1, 1,
-                                                       2).to(x.device).float()
+    img_shape = torch.tensor(x.shape[2:]).flip(0).view(1, 1, 2).to(x.device).float()
     return img_shape
 
 
-def abs_img_point_to_rel_img_point(abs_img_points: Tensor,
-                                   img: Union[tuple, Tensor],
-                                   spatial_scale: float = 1.) -> Tensor:
+def abs_img_point_to_rel_img_point(
+    abs_img_points: Tensor, img: Union[tuple, Tensor], spatial_scale: float = 1.0
+) -> Tensor:
     """Convert image based absolute point coordinates to image based relative
     coordinates for sampling.
 
@@ -200,14 +194,13 @@ def abs_img_point_to_rel_img_point(abs_img_points: Tensor,
         (N, P, 2).
     """
 
-    assert (isinstance(img, tuple) and len(img) == 2) or \
-           (isinstance(img, torch.Tensor) and len(img.shape) == 4)
+    assert (isinstance(img, tuple) and len(img) == 2) or (
+        isinstance(img, torch.Tensor) and len(img.shape) == 4
+    )
 
     if isinstance(img, tuple):
         h, w = img
-        scale = torch.tensor([w, h],
-                             dtype=torch.float,
-                             device=abs_img_points.device)
+        scale = torch.tensor([w, h], dtype=torch.float, device=abs_img_points.device)
         scale = scale.view(1, 1, 2)
     else:
         scale = get_shape_from_feature_map(img)
@@ -215,12 +208,14 @@ def abs_img_point_to_rel_img_point(abs_img_points: Tensor,
     return abs_img_points / scale * spatial_scale
 
 
-def rel_roi_point_to_rel_img_point(rois: Tensor,
-                                   rel_roi_points: Tensor,
-                                   img: Union[tuple, Tensor],
-                                   spatial_scale: float = 1.) -> Tensor:
-    """Convert roi based relative point coordinates to image based absolute
-    point coordinates.
+def rel_roi_point_to_rel_img_point(
+    rois: Tensor,
+    rel_roi_points: Tensor,
+    img: Union[tuple, Tensor],
+    spatial_scale: float = 1.0,
+) -> Tensor:
+    """Convert roi based relative point coordinates to image based absolute point
+    coordinates.
 
     Args:
         rois (torch.Tensor): RoIs or BBoxes, shape (N, 4) or (N, 5)
@@ -236,19 +231,17 @@ def rel_roi_point_to_rel_img_point(rois: Tensor,
     """
 
     abs_img_point = rel_roi_point_to_abs_img_point(rois, rel_roi_points)
-    rel_img_point = abs_img_point_to_rel_img_point(abs_img_point, img,
-                                                   spatial_scale)
+    rel_img_point = abs_img_point_to_rel_img_point(abs_img_point, img, spatial_scale)
 
     return rel_img_point
 
 
-def point_sample(input: Tensor,
-                 points: Tensor,
-                 align_corners: bool = False,
-                 **kwargs) -> Tensor:
-    """A wrapper around :func:`grid_sample` to support 3D point_coords tensors
-    Unlike :func:`torch.nn.functional.grid_sample` it assumes point_coords to
-    lie inside ``[0, 1] x [0, 1]`` square.
+def point_sample(
+    input: Tensor, points: Tensor, align_corners: bool = False, **kwargs
+) -> Tensor:
+    """A wrapper around :func:`grid_sample` to support 3D point_coords tensors Unlike
+    :func:`torch.nn.functional.grid_sample` it assumes point_coords to lie inside ``[0,
+    1] x [0, 1]`` square.
 
     Args:
         input (torch.Tensor): Feature map, shape (N, C, H, W).
@@ -268,7 +261,8 @@ def point_sample(input: Tensor,
         add_dim = True
         points = points.unsqueeze(2)
     output = F.grid_sample(
-        input, denormalize(points), align_corners=align_corners, **kwargs)
+        input, denormalize(points), align_corners=align_corners, **kwargs
+    )
     if add_dim:
         output = output.squeeze(3)
     return output
@@ -276,10 +270,9 @@ def point_sample(input: Tensor,
 
 class SimpleRoIAlign(nn.Module):
 
-    def __init__(self,
-                 output_size: Tuple[int],
-                 spatial_scale: float,
-                 aligned: bool = True) -> None:
+    def __init__(
+        self, output_size: Tuple[int], spatial_scale: float, aligned: bool = True
+    ) -> None:
         """Simple RoI align in PointRend, faster than standard RoIAlign.
 
         Args:
@@ -300,33 +293,33 @@ class SimpleRoIAlign(nn.Module):
     def forward(self, features: Tensor, rois: Tensor) -> Tensor:
         num_imgs = features.size(0)
         num_rois = rois.size(0)
-        rel_roi_points = generate_grid(
-            num_rois, self.output_size, device=rois.device)
+        rel_roi_points = generate_grid(num_rois, self.output_size, device=rois.device)
 
         point_feats = []
         for batch_ind in range(num_imgs):
             # unravel batch dim
             feat = features[batch_ind].unsqueeze(0)
-            inds = (rois[:, 0].long() == batch_ind)
+            inds = rois[:, 0].long() == batch_ind
             if inds.any():
                 rel_img_points = rel_roi_point_to_rel_img_point(
-                    rois[inds], rel_roi_points[inds], feat,
-                    self.spatial_scale).unsqueeze(0)
+                    rois[inds], rel_roi_points[inds], feat, self.spatial_scale
+                ).unsqueeze(0)
                 point_feat = point_sample(
-                    feat, rel_img_points, align_corners=not self.aligned)
+                    feat, rel_img_points, align_corners=not self.aligned
+                )
                 point_feat = point_feat.squeeze(0).transpose(0, 1)
                 point_feats.append(point_feat)
 
         point_feats_t = torch.cat(point_feats, dim=0)
 
         channels = features.size(1)
-        roi_feats = point_feats_t.reshape(num_rois, channels,
-                                          *self.output_size)
+        roi_feats = point_feats_t.reshape(num_rois, channels, *self.output_size)
 
         return roi_feats
 
     def __repr__(self) -> str:
         format_str = self.__class__.__name__
-        format_str += '(output_size={}, spatial_scale={}'.format(
-            self.output_size, self.spatial_scale)
+        format_str += "(output_size={}, spatial_scale={}".format(
+            self.output_size, self.spatial_scale
+        )
         return format_str

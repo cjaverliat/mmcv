@@ -9,13 +9,19 @@ from mmengine.utils import digit_version
 from mmengine.utils.dl_utils import TORCH_VERSION
 
 for module in [
-        nn.ReLU, nn.LeakyReLU, nn.PReLU, nn.RReLU, nn.ReLU6, nn.ELU,
-        nn.Sigmoid, nn.Tanh
+    nn.ReLU,
+    nn.LeakyReLU,
+    nn.PReLU,
+    nn.RReLU,
+    nn.ReLU6,
+    nn.ELU,
+    nn.Sigmoid,
+    nn.Tanh,
 ]:
     MODELS.register_module(module=module)
 
-if digit_version(torch.__version__) >= digit_version('1.7.0'):
-    MODELS.register_module(module=nn.SiLU, name='SiLU')
+if digit_version(torch.__version__) >= digit_version("1.7.0"):
+    MODELS.register_module(module=nn.SiLU, name="SiLU")
 else:
 
     class SiLU(nn.Module):
@@ -31,10 +37,10 @@ else:
             else:
                 return inputs * torch.sigmoid(inputs)
 
-    MODELS.register_module(module=SiLU, name='SiLU')
+    MODELS.register_module(module=SiLU, name="SiLU")
 
 
-@MODELS.register_module(name='Clip')
+@MODELS.register_module(name="Clip")
 @MODELS.register_module()
 class Clamp(nn.Module):
     """Clamp activation layer.
@@ -49,7 +55,7 @@ class Clamp(nn.Module):
             Default to 1.
     """
 
-    def __init__(self, min: float = -1., max: float = 1.):
+    def __init__(self, min: float = -1.0, max: float = 1.0):
         super().__init__()
         self.min = min
         self.max = max
@@ -92,8 +98,7 @@ class GELU(nn.Module):
         return F.gelu(input)
 
 
-if (TORCH_VERSION == 'parrots'
-        or digit_version(TORCH_VERSION) < digit_version('1.4')):
+if TORCH_VERSION == "parrots" or digit_version(TORCH_VERSION) < digit_version("1.4"):
     MODELS.register_module(module=GELU)
 else:
     MODELS.register_module(module=nn.GELU)

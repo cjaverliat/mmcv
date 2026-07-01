@@ -3,11 +3,16 @@ import os.path as osp
 from collections import OrderedDict
 
 import cv2
-from cv2 import (CAP_PROP_FOURCC, CAP_PROP_FPS, CAP_PROP_FRAME_COUNT,
-                 CAP_PROP_FRAME_HEIGHT, CAP_PROP_FRAME_WIDTH,
-                 CAP_PROP_POS_FRAMES, VideoWriter_fourcc)
-from mmengine.utils import (check_file_exist, mkdir_or_exist, scandir,
-                            track_progress)
+from cv2 import (
+    CAP_PROP_FOURCC,
+    CAP_PROP_FPS,
+    CAP_PROP_FRAME_COUNT,
+    CAP_PROP_FRAME_HEIGHT,
+    CAP_PROP_FRAME_WIDTH,
+    CAP_PROP_POS_FRAMES,
+    VideoWriter_fourcc,
+)
+from mmengine.utils import check_file_exist, mkdir_or_exist, scandir, track_progress
 
 
 class Cache:
@@ -16,7 +21,7 @@ class Cache:
         self._cache = OrderedDict()
         self._capacity = int(capacity)
         if capacity <= 0:
-            raise ValueError('capacity must be a positive integer')
+            raise ValueError("capacity must be a positive integer")
 
     @property
     def capacity(self):
@@ -61,8 +66,8 @@ class VideoReader:
 
     def __init__(self, filename, cache_capacity=10):
         # Check whether the video path is a url
-        if not filename.startswith(('https://', 'http://')):
-            check_file_exist(filename, 'Video file not found: ' + filename)
+        if not filename.startswith(("https://", "http://")):
+            check_file_exist(filename, "Video file not found: " + filename)
         self._vcap = cv2.VideoCapture(filename)
         assert cache_capacity > 0
         self._cache = Cache(cache_capacity)
@@ -165,8 +170,7 @@ class VideoReader:
             ndarray or None: Return the frame if successful, otherwise None.
         """
         if frame_id < 0 or frame_id >= self._frame_cnt:
-            raise IndexError(
-                f'"frame_id" must be between 0 and {self._frame_cnt - 1}')
+            raise IndexError(f'"frame_id" must be between 0 and {self._frame_cnt - 1}')
         if frame_id == self._position:
             return self.read()
         if self._cache:
@@ -193,13 +197,15 @@ class VideoReader:
             return None
         return self._cache.get(self._position - 1)
 
-    def cvt2frames(self,
-                   frame_dir,
-                   file_start=0,
-                   filename_tmpl='{:06d}.jpg',
-                   start=0,
-                   max_num=0,
-                   show_progress=True):
+    def cvt2frames(
+        self,
+        frame_dir,
+        file_start=0,
+        filename_tmpl="{:06d}.jpg",
+        start=0,
+        max_num=0,
+        show_progress=True,
+    ):
         """Convert a video to frame images.
 
         Args:
@@ -217,7 +223,7 @@ class VideoReader:
         else:
             task_num = min(self.frame_cnt - start, max_num)
         if task_num <= 0:
-            raise ValueError('start must be less than total frame number')
+            raise ValueError("start must be less than total frame number")
         if start > 0:
             self._set_real_position(start)
 
@@ -229,8 +235,7 @@ class VideoReader:
             cv2.imwrite(filename, img)
 
         if show_progress:
-            track_progress(write_frame, range(file_start,
-                                              file_start + task_num))
+            track_progress(write_frame, range(file_start, file_start + task_num))
         else:
             for i in range(task_num):
                 write_frame(file_start + i)
@@ -240,15 +245,12 @@ class VideoReader:
 
     def __getitem__(self, index):
         if isinstance(index, slice):
-            return [
-                self.get_frame(i)
-                for i in range(*index.indices(self.frame_cnt))
-            ]
+            return [self.get_frame(i) for i in range(*index.indices(self.frame_cnt))]
         # support negative indexing
         if index < 0:
             index += self.frame_cnt
             if index < 0:
-                raise IndexError('index out of range')
+                raise IndexError("index out of range")
         return self.get_frame(index)
 
     def __iter__(self):
@@ -271,14 +273,16 @@ class VideoReader:
         self._vcap.release()
 
 
-def frames2video(frame_dir: str,
-                 video_file: str,
-                 fps: float = 30,
-                 fourcc: str = 'XVID',
-                 filename_tmpl: str = '{:06d}.jpg',
-                 start: int = 0,
-                 end: int = 0,
-                 show_progress: bool = True) -> None:
+def frames2video(
+    frame_dir: str,
+    video_file: str,
+    fps: float = 30,
+    fourcc: str = "XVID",
+    filename_tmpl: str = "{:06d}.jpg",
+    start: int = 0,
+    end: int = 0,
+    show_progress: bool = True,
+) -> None:
     """Read the frame images from a directory and join them as a video.
 
     Args:
@@ -293,15 +297,14 @@ def frames2video(frame_dir: str,
         show_progress (bool): Whether to show a progress bar.
     """
     if end == 0:
-        ext = filename_tmpl.split('.')[-1]
+        ext = filename_tmpl.split(".")[-1]
         end = len([name for name in scandir(frame_dir, ext)])
     first_file = osp.join(frame_dir, filename_tmpl.format(start))
-    check_file_exist(first_file, 'The start frame not found: ' + first_file)
+    check_file_exist(first_file, "The start frame not found: " + first_file)
     img = cv2.imread(first_file)
     height, width = img.shape[:2]
     resolution = (width, height)
-    vwriter = cv2.VideoWriter(video_file, VideoWriter_fourcc(*fourcc), fps,
-                              resolution)
+    vwriter = cv2.VideoWriter(video_file, VideoWriter_fourcc(*fourcc), fps, resolution)
 
     def write_frame(file_idx):
         filename = osp.join(frame_dir, filename_tmpl.format(file_idx))

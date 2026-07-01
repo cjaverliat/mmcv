@@ -13,42 +13,76 @@ except ImportError:
 
     _USING_PARROTS = False
 
-inputs = [([[[[1., 2.], [3., 4.]]]], [[0., 0., 0., 1., 1.]]),
-          ([[[[1., 2.], [3., 4.]], [[4., 3.], [2.,
-                                               1.]]]], [[0., 0., 0., 1., 1.]]),
-          ([[[[1., 2., 5., 6.], [3., 4., 7., 8.], [9., 10., 13., 14.],
-              [11., 12., 15., 16.]]]], [[0., 0., 0., 3., 3.]])]
+inputs = [
+    ([[[[1.0, 2.0], [3.0, 4.0]]]], [[0.0, 0.0, 0.0, 1.0, 1.0]]),
+    (
+        [[[[1.0, 2.0], [3.0, 4.0]], [[4.0, 3.0], [2.0, 1.0]]]],
+        [[0.0, 0.0, 0.0, 1.0, 1.0]],
+    ),
+    (
+        [
+            [
+                [
+                    [1.0, 2.0, 5.0, 6.0],
+                    [3.0, 4.0, 7.0, 8.0],
+                    [9.0, 10.0, 13.0, 14.0],
+                    [11.0, 12.0, 15.0, 16.0],
+                ]
+            ]
+        ],
+        [[0.0, 0.0, 0.0, 3.0, 3.0]],
+    ),
+]
 outputs = [
-    ([[[[1.75, 2.25], [2.75, 3.25]]]], [[[[1., 1.],
-                                          [1., 1.]]]], [[0., 2., 4., 2., 4.]]),
-    ([[[[1.75, 2.25], [2.75, 3.25]],
-       [[3.25, 2.75], [2.25, 1.75]]]], [[[[1., 1.], [1., 1.]],
-                                         [[1., 1.],
-                                          [1., 1.]]]], [[0., 0., 0., 0., 0.]]),
-    ([[[[3.75, 6.91666651],
-        [10.08333302,
-         13.25]]]], [[[[0.11111111, 0.22222224, 0.22222222, 0.11111111],
-                       [0.22222224, 0.444444448, 0.44444448, 0.22222224],
-                       [0.22222224, 0.44444448, 0.44444448, 0.22222224],
-                       [0.11111111, 0.22222224, 0.22222224, 0.11111111]]]],
-     [[0.0, 3.33333302, 6.66666603, 3.33333349, 6.66666698]])
+    (
+        [[[[1.75, 2.25], [2.75, 3.25]]]],
+        [[[[1.0, 1.0], [1.0, 1.0]]]],
+        [[0.0, 2.0, 4.0, 2.0, 4.0]],
+    ),
+    (
+        [[[[1.75, 2.25], [2.75, 3.25]], [[3.25, 2.75], [2.25, 1.75]]]],
+        [[[[1.0, 1.0], [1.0, 1.0]], [[1.0, 1.0], [1.0, 1.0]]]],
+        [[0.0, 0.0, 0.0, 0.0, 0.0]],
+    ),
+    (
+        [[[[3.75, 6.91666651], [10.08333302, 13.25]]]],
+        [
+            [
+                [
+                    [0.11111111, 0.22222224, 0.22222222, 0.11111111],
+                    [0.22222224, 0.444444448, 0.44444448, 0.22222224],
+                    [0.22222224, 0.44444448, 0.44444448, 0.22222224],
+                    [0.11111111, 0.22222224, 0.22222224, 0.11111111],
+                ]
+            ]
+        ],
+        [[0.0, 3.33333302, 6.66666603, 3.33333349, 6.66666698]],
+    ),
 ]
 
 
 class TestPrRoiPool:
 
-    @pytest.mark.parametrize('device', [
-        pytest.param(
-            'cuda',
-            marks=pytest.mark.skipif(
-                not IS_CUDA_AVAILABLE, reason='requires CUDA support')),
-        pytest.param(
-            'musa',
-            marks=pytest.mark.skipif(
-                not IS_MUSA_AVAILABLE, reason='requires MUSA support'))
-    ])
+    @pytest.mark.parametrize(
+        "device",
+        [
+            pytest.param(
+                "cuda",
+                marks=pytest.mark.skipif(
+                    not IS_CUDA_AVAILABLE, reason="requires CUDA support"
+                ),
+            ),
+            pytest.param(
+                "musa",
+                marks=pytest.mark.skipif(
+                    not IS_MUSA_AVAILABLE, reason="requires MUSA support"
+                ),
+            ),
+        ],
+    )
     def test_roipool_gradcheck(self, device):
         from mmcv.ops import PrRoIPool
+
         pool_h = 2
         pool_w = 2
         spatial_scale = 1.0
@@ -69,6 +103,7 @@ class TestPrRoiPool:
 
     def _test_roipool_allclose(self, device, dtype=torch.float):
         from mmcv.ops import prroi_pool
+
         pool_h = 2
         pool_w = 2
         spatial_scale = 1.0
@@ -80,27 +115,31 @@ class TestPrRoiPool:
             np_input_grad = np.array(output[1], dtype=np.float32)
             np_rois_grad = np.array(output[2], dtype=np.float32)
 
-            x = torch.tensor(
-                np_input, dtype=dtype, device=device, requires_grad=True)
-            rois = torch.tensor(
-                np_rois, dtype=dtype, device=device, requires_grad=True)
+            x = torch.tensor(np_input, dtype=dtype, device=device, requires_grad=True)
+            rois = torch.tensor(np_rois, dtype=dtype, device=device, requires_grad=True)
 
             output = prroi_pool(x, rois, (pool_h, pool_w), spatial_scale)
             output.backward(torch.ones_like(output))
             assert np.allclose(output.data.cpu().numpy(), np_output, 1e-3)
             assert np.allclose(x.grad.data.cpu().numpy(), np_input_grad, 1e-3)
-            assert np.allclose(rois.grad.data.cpu().numpy(), np_rois_grad,
-                               1e-3)
+            assert np.allclose(rois.grad.data.cpu().numpy(), np_rois_grad, 1e-3)
 
-    @pytest.mark.parametrize('device', [
-        pytest.param(
-            'cuda',
-            marks=pytest.mark.skipif(
-                not IS_CUDA_AVAILABLE, reason='requires CUDA support')),
-        pytest.param(
-            'musa',
-            marks=pytest.mark.skipif(
-                not IS_MUSA_AVAILABLE, reason='requires MUSA support'))
-    ])
+    @pytest.mark.parametrize(
+        "device",
+        [
+            pytest.param(
+                "cuda",
+                marks=pytest.mark.skipif(
+                    not IS_CUDA_AVAILABLE, reason="requires CUDA support"
+                ),
+            ),
+            pytest.param(
+                "musa",
+                marks=pytest.mark.skipif(
+                    not IS_MUSA_AVAILABLE, reason="requires MUSA support"
+                ),
+            ),
+        ],
+    )
     def test_roipool_allclose_float(self, device):
         self._test_roipool_allclose(device, dtype=torch.float)

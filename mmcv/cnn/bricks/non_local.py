@@ -33,14 +33,16 @@ class _NonLocalNd(nn.Module, metaclass=ABCMeta):
             `embedded_gaussian` and `dot_product`. Default: embedded_gaussian.
     """
 
-    def __init__(self,
-                 in_channels: int,
-                 reduction: int = 2,
-                 use_scale: bool = True,
-                 conv_cfg: Optional[Dict] = None,
-                 norm_cfg: Optional[Dict] = None,
-                 mode: str = 'embedded_gaussian',
-                 **kwargs):
+    def __init__(
+        self,
+        in_channels: int,
+        reduction: int = 2,
+        use_scale: bool = True,
+        conv_cfg: Optional[Dict] = None,
+        norm_cfg: Optional[Dict] = None,
+        mode: str = "embedded_gaussian",
+        **kwargs,
+    ):
         super().__init__()
         self.in_channels = in_channels
         self.reduction = reduction
@@ -49,11 +51,16 @@ class _NonLocalNd(nn.Module, metaclass=ABCMeta):
         self.mode = mode
 
         if mode not in [
-                'gaussian', 'embedded_gaussian', 'dot_product', 'concatenation'
+            "gaussian",
+            "embedded_gaussian",
+            "dot_product",
+            "concatenation",
         ]:
-            raise ValueError("Mode should be in 'gaussian', 'concatenation', "
-                             f"'embedded_gaussian' or 'dot_product', but got "
-                             f'{mode} instead.')
+            raise ValueError(
+                "Mode should be in 'gaussian', 'concatenation', "
+                f"'embedded_gaussian' or 'dot_product', but got "
+                f"{mode} instead."
+            )
 
         # g, theta, phi are defaulted as `nn.ConvNd`.
         # Here we use ConvModule for potential usage.
@@ -62,30 +69,34 @@ class _NonLocalNd(nn.Module, metaclass=ABCMeta):
             self.inter_channels,
             kernel_size=1,
             conv_cfg=conv_cfg,
-            act_cfg=None)  # type: ignore
+            act_cfg=None,
+        )  # type: ignore
         self.conv_out = ConvModule(
             self.inter_channels,
             self.in_channels,
             kernel_size=1,
             conv_cfg=conv_cfg,
             norm_cfg=norm_cfg,
-            act_cfg=None)
+            act_cfg=None,
+        )
 
-        if self.mode != 'gaussian':
+        if self.mode != "gaussian":
             self.theta = ConvModule(
                 self.in_channels,
                 self.inter_channels,
                 kernel_size=1,
                 conv_cfg=conv_cfg,
-                act_cfg=None)
+                act_cfg=None,
+            )
             self.phi = ConvModule(
                 self.in_channels,
                 self.inter_channels,
                 kernel_size=1,
                 conv_cfg=conv_cfg,
-                act_cfg=None)
+                act_cfg=None,
+            )
 
-        if self.mode == 'concatenation':
+        if self.mode == "concatenation":
             self.concat_project = ConvModule(
                 self.inter_channels * 2,
                 1,
@@ -93,12 +104,13 @@ class _NonLocalNd(nn.Module, metaclass=ABCMeta):
                 stride=1,
                 padding=0,
                 bias=False,
-                act_cfg=dict(type='ReLU'))
+                act_cfg=dict(type="ReLU"),
+            )
 
         self.init_weights(**kwargs)
 
     def init_weights(self, std: float = 0.01, zeros_init: bool = True) -> None:
-        if self.mode != 'gaussian':
+        if self.mode != "gaussian":
             for m in [self.g, self.theta, self.phi]:
                 normal_init(m.conv, std=std)
         else:
@@ -114,8 +126,7 @@ class _NonLocalNd(nn.Module, metaclass=ABCMeta):
             else:
                 normal_init(self.conv_out.norm, std=std)
 
-    def gaussian(self, theta_x: torch.Tensor,
-                 phi_x: torch.Tensor) -> torch.Tensor:
+    def gaussian(self, theta_x: torch.Tensor, phi_x: torch.Tensor) -> torch.Tensor:
         # NonLocal1d pairwise_weight: [N, H, H]
         # NonLocal2d pairwise_weight: [N, HxW, HxW]
         # NonLocal3d pairwise_weight: [N, TxHxW, TxHxW]
@@ -123,20 +134,20 @@ class _NonLocalNd(nn.Module, metaclass=ABCMeta):
         pairwise_weight = pairwise_weight.softmax(dim=-1)
         return pairwise_weight
 
-    def embedded_gaussian(self, theta_x: torch.Tensor,
-                          phi_x: torch.Tensor) -> torch.Tensor:
+    def embedded_gaussian(
+        self, theta_x: torch.Tensor, phi_x: torch.Tensor
+    ) -> torch.Tensor:
         # NonLocal1d pairwise_weight: [N, H, H]
         # NonLocal2d pairwise_weight: [N, HxW, HxW]
         # NonLocal3d pairwise_weight: [N, TxHxW, TxHxW]
         pairwise_weight = torch.matmul(theta_x, phi_x)
         if self.use_scale:
             # theta_x.shape[-1] is `self.inter_channels`
-            pairwise_weight /= theta_x.shape[-1]**0.5
+            pairwise_weight /= theta_x.shape[-1] ** 0.5
         pairwise_weight = pairwise_weight.softmax(dim=-1)
         return pairwise_weight
 
-    def dot_product(self, theta_x: torch.Tensor,
-                    phi_x: torch.Tensor) -> torch.Tensor:
+    def dot_product(self, theta_x: torch.Tensor, phi_x: torch.Tensor) -> torch.Tensor:
         # NonLocal1d pairwise_weight: [N, H, H]
         # NonLocal2d pairwise_weight: [N, HxW, HxW]
         # NonLocal3d pairwise_weight: [N, TxHxW, TxHxW]
@@ -144,8 +155,7 @@ class _NonLocalNd(nn.Module, metaclass=ABCMeta):
         pairwise_weight /= pairwise_weight.shape[-1]
         return pairwise_weight
 
-    def concatenation(self, theta_x: torch.Tensor,
-                      phi_x: torch.Tensor) -> torch.Tensor:
+    def concatenation(self, theta_x: torch.Tensor, phi_x: torch.Tensor) -> torch.Tensor:
         # NonLocal1d pairwise_weight: [N, H, H]
         # NonLocal2d pairwise_weight: [N, HxW, HxW]
         # NonLocal3d pairwise_weight: [N, TxHxW, TxHxW]
@@ -180,14 +190,14 @@ class _NonLocalNd(nn.Module, metaclass=ABCMeta):
         # NonLocal1d theta_x: [N, H, C], phi_x: [N, C, H]
         # NonLocal2d theta_x: [N, HxW, C], phi_x: [N, C, HxW]
         # NonLocal3d theta_x: [N, TxHxW, C], phi_x: [N, C, TxHxW]
-        if self.mode == 'gaussian':
+        if self.mode == "gaussian":
             theta_x = x.view(n, self.in_channels, -1)
             theta_x = theta_x.permute(0, 2, 1)
             if self.sub_sample:
                 phi_x = self.phi(x).view(n, self.in_channels, -1)
             else:
                 phi_x = x.view(n, self.in_channels, -1)
-        elif self.mode == 'concatenation':
+        elif self.mode == "concatenation":
             theta_x = self.theta(x).view(n, self.inter_channels, -1, 1)
             phi_x = self.phi(x).view(n, self.inter_channels, 1, -1)
         else:
@@ -208,8 +218,11 @@ class _NonLocalNd(nn.Module, metaclass=ABCMeta):
         # NonLocal1d y: [N, C, H]
         # NonLocal2d y: [N, C, H, W]
         # NonLocal3d y: [N, C, T, H, W]
-        y = y.permute(0, 2, 1).contiguous().reshape(n, self.inter_channels,
-                                                    *x.size()[2:])
+        y = (
+            y.permute(0, 2, 1)
+            .contiguous()
+            .reshape(n, self.inter_channels, *x.size()[2:])
+        )
 
         output = x + self.conv_out(y)
 
@@ -228,11 +241,13 @@ class NonLocal1d(_NonLocalNd):
             Default: dict(type='Conv1d').
     """
 
-    def __init__(self,
-                 in_channels: int,
-                 sub_sample: bool = False,
-                 conv_cfg: Dict = dict(type='Conv1d'),
-                 **kwargs):
+    def __init__(
+        self,
+        in_channels: int,
+        sub_sample: bool = False,
+        conv_cfg: Dict = dict(type="Conv1d"),
+        **kwargs,
+    ):
         super().__init__(in_channels, conv_cfg=conv_cfg, **kwargs)
 
         self.sub_sample = sub_sample
@@ -240,7 +255,7 @@ class NonLocal1d(_NonLocalNd):
         if sub_sample:
             max_pool_layer = nn.MaxPool1d(kernel_size=2)
             self.g = nn.Sequential(self.g, max_pool_layer)
-            if self.mode != 'gaussian':
+            if self.mode != "gaussian":
                 self.phi = nn.Sequential(self.phi, max_pool_layer)
             else:
                 self.phi = max_pool_layer
@@ -259,13 +274,15 @@ class NonLocal2d(_NonLocalNd):
             Default: dict(type='Conv2d').
     """
 
-    _abbr_ = 'nonlocal_block'
+    _abbr_ = "nonlocal_block"
 
-    def __init__(self,
-                 in_channels: int,
-                 sub_sample: bool = False,
-                 conv_cfg: Dict = dict(type='Conv2d'),
-                 **kwargs):
+    def __init__(
+        self,
+        in_channels: int,
+        sub_sample: bool = False,
+        conv_cfg: Dict = dict(type="Conv2d"),
+        **kwargs,
+    ):
         super().__init__(in_channels, conv_cfg=conv_cfg, **kwargs)
 
         self.sub_sample = sub_sample
@@ -273,7 +290,7 @@ class NonLocal2d(_NonLocalNd):
         if sub_sample:
             max_pool_layer = nn.MaxPool2d(kernel_size=(2, 2))
             self.g = nn.Sequential(self.g, max_pool_layer)
-            if self.mode != 'gaussian':
+            if self.mode != "gaussian":
                 self.phi = nn.Sequential(self.phi, max_pool_layer)
             else:
                 self.phi = max_pool_layer
@@ -291,18 +308,20 @@ class NonLocal3d(_NonLocalNd):
             Default: dict(type='Conv3d').
     """
 
-    def __init__(self,
-                 in_channels: int,
-                 sub_sample: bool = False,
-                 conv_cfg: Dict = dict(type='Conv3d'),
-                 **kwargs):
+    def __init__(
+        self,
+        in_channels: int,
+        sub_sample: bool = False,
+        conv_cfg: Dict = dict(type="Conv3d"),
+        **kwargs,
+    ):
         super().__init__(in_channels, conv_cfg=conv_cfg, **kwargs)
         self.sub_sample = sub_sample
 
         if sub_sample:
             max_pool_layer = nn.MaxPool3d(kernel_size=(1, 2, 2))
             self.g = nn.Sequential(self.g, max_pool_layer)
-            if self.mode != 'gaussian':
+            if self.mode != "gaussian":
                 self.phi = nn.Sequential(self.phi, max_pool_layer)
             else:
                 self.phi = max_pool_layer

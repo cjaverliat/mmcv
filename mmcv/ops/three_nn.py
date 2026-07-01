@@ -5,7 +5,7 @@ from torch.autograd import Function
 
 from ..utils import ext_loader
 
-ext_module = ext_loader.load_ext('_ext', ['three_nn_forward'])
+ext_module = ext_loader.load_ext("_ext", ["three_nn_forward"])
 
 
 class ThreeNN(Function):
@@ -16,8 +16,9 @@ class ThreeNN(Function):
     """
 
     @staticmethod
-    def forward(ctx: Any, target: torch.Tensor,
-                source: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(
+        ctx: Any, target: torch.Tensor, source: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Args:
             target (torch.Tensor): shape (B, N, 3), points set that needs to
@@ -34,7 +35,7 @@ class ThreeNN(Function):
 
         B, N, _ = target.size()
         m = source.size(1)
-        if source.device.type == 'npu':
+        if source.device.type == "npu":
             # strict to fp32
             source = source.transpose(2, 1).contiguous()
             dtype_ = source.dtype
@@ -43,8 +44,7 @@ class ThreeNN(Function):
                 source = source.float()
             dist2 = target.new_empty(B, N, 3)
             idx = target.new_empty(B, N, 3, dtype=torch.int32)
-            ext_module.three_nn_forward(
-                target, source, dist2, idx, b=B, n=N, m=m)
+            ext_module.three_nn_forward(target, source, dist2, idx, b=B, n=N, m=m)
             dist2 = torch.sqrt(dist2)
             if dtype_ == torch.float16:
                 dist2 = dist2.half()
@@ -53,7 +53,7 @@ class ThreeNN(Function):
         idx = target.new_empty(B, N, 3, dtype=torch.int32)
 
         ext_module.three_nn_forward(target, source, dist2, idx, b=B, n=N, m=m)
-        if torch.__version__ != 'parrots':
+        if torch.__version__ != "parrots":
             ctx.mark_non_differentiable(idx)
 
         return torch.sqrt(dist2), idx

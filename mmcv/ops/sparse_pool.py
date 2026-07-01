@@ -22,13 +22,7 @@ from .sparse_structure import SparseConvTensor
 
 class SparseMaxPool(SparseModule):
 
-    def __init__(self,
-                 ndim,
-                 kernel_size,
-                 stride=1,
-                 padding=0,
-                 dilation=1,
-                 subm=False):
+    def __init__(self, ndim, kernel_size, stride=1, padding=0, dilation=1, subm=False):
         super().__init__()
         if not isinstance(kernel_size, (list, tuple)):
             kernel_size = [kernel_size] * ndim
@@ -54,21 +48,36 @@ class SparseMaxPool(SparseModule):
         spatial_shape = input.spatial_shape
         batch_size = input.batch_size
         if not self.subm:
-            out_spatial_shape = get_conv_output_size(spatial_shape,
-                                                     self.kernel_size,
-                                                     self.stride, self.padding,
-                                                     self.dilation)
+            out_spatial_shape = get_conv_output_size(
+                spatial_shape,
+                self.kernel_size,
+                self.stride,
+                self.padding,
+                self.dilation,
+            )
         else:
             out_spatial_shape = spatial_shape
         outids, indice_pairs, indice_pairs_num = get_indice_pairs(
-            indices, batch_size, spatial_shape, self.kernel_size, self.stride,
-            self.padding, self.dilation, 0, self.subm)
+            indices,
+            batch_size,
+            spatial_shape,
+            self.kernel_size,
+            self.stride,
+            self.padding,
+            self.dilation,
+            0,
+            self.subm,
+        )
 
-        out_features = indice_maxpool(features, indice_pairs.to(device),
-                                      indice_pairs_num.to(device),
-                                      outids.shape[0])
-        out_tensor = SparseConvTensor(out_features, outids, out_spatial_shape,
-                                      batch_size)
+        out_features = indice_maxpool(
+            features,
+            indice_pairs.to(device),
+            indice_pairs_num.to(device),
+            outids.shape[0],
+        )
+        out_tensor = SparseConvTensor(
+            out_features, outids, out_spatial_shape, batch_size
+        )
         out_tensor.indice_dict = input.indice_dict
         out_tensor.grid = input.grid
         return out_tensor

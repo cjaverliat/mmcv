@@ -3,14 +3,16 @@ import torch
 
 from ..utils import ext_loader
 
-ext_module = ext_loader.load_ext('_ext', ['box_iou_rotated'])
+ext_module = ext_loader.load_ext("_ext", ["box_iou_rotated"])
 
 
-def box_iou_rotated(bboxes1: torch.Tensor,
-                    bboxes2: torch.Tensor,
-                    mode: str = 'iou',
-                    aligned: bool = False,
-                    clockwise: bool = True) -> torch.Tensor:
+def box_iou_rotated(
+    bboxes1: torch.Tensor,
+    bboxes2: torch.Tensor,
+    mode: str = "iou",
+    aligned: bool = False,
+    clockwise: bool = True,
+) -> torch.Tensor:
     """Return intersection-over-union (Jaccard index) of boxes.
 
     Both sets of boxes are expected to be in
@@ -125,15 +127,15 @@ def box_iou_rotated(bboxes1: torch.Tensor,
         torch.Tensor: Return the ious betweens boxes. If ``aligned`` is
         ``False``, the shape of ious is (N, M) else (N,).
     """
-    assert mode in ['iou', 'iof']
-    mode_dict = {'iou': 0, 'iof': 1}
+    assert mode in ["iou", "iof"]
+    mode_dict = {"iou": 0, "iof": 1}
     mode_flag = mode_dict[mode]
     rows = bboxes1.size(0)
     cols = bboxes2.size(0)
     if aligned:
         ious = bboxes1.new_zeros(rows)
     else:
-        if bboxes1.device.type == 'mlu':
+        if bboxes1.device.type == "mlu":
             ious = bboxes1.new_zeros([rows, cols])
         else:
             ious = bboxes1.new_zeros(rows * cols)
@@ -142,7 +144,7 @@ def box_iou_rotated(bboxes1: torch.Tensor,
         flip_mat[-1] = -1
         bboxes1 = bboxes1 * flip_mat
         bboxes2 = bboxes2 * flip_mat
-    if bboxes1.device.type == 'npu':
+    if bboxes1.device.type == "npu":
         scale_mat = bboxes1.new_ones(bboxes1.shape[-1])
         scale_mat[-1] = 1.0 / 0.01745329252
         bboxes1 = bboxes1 * scale_mat
@@ -150,7 +152,8 @@ def box_iou_rotated(bboxes1: torch.Tensor,
     bboxes1 = bboxes1.contiguous()
     bboxes2 = bboxes2.contiguous()
     ext_module.box_iou_rotated(
-        bboxes1, bboxes2, ious, mode_flag=mode_flag, aligned=aligned)
+        bboxes1, bboxes2, ious, mode_flag=mode_flag, aligned=aligned
+    )
     if not aligned:
         ious = ious.view(rows, cols)
     return ious

@@ -12,11 +12,11 @@ import mmcv
 
 
 def test_flowread():
-    data_dir = osp.join(osp.dirname(__file__), '../data')
+    data_dir = osp.join(osp.dirname(__file__), "../data")
     flow_shape = (60, 80, 2)
 
     # read .flo file
-    flow = mmcv.flowread(osp.join(data_dir, 'optflow.flo'))
+    flow = mmcv.flowread(osp.join(data_dir, "optflow.flo"))
     assert flow.shape == flow_shape
 
     # pseudo read
@@ -25,19 +25,21 @@ def test_flowread():
 
     # read quantized flow concatenated vertically
     flow = mmcv.flowread(
-        osp.join(data_dir, 'optflow_concat0.jpg'), quantize=True, denorm=True)
+        osp.join(data_dir, "optflow_concat0.jpg"), quantize=True, denorm=True
+    )
     assert flow.shape == flow_shape
 
     # read quantized flow concatenated horizontally
     flow = mmcv.flowread(
-        osp.join(data_dir, 'optflow_concat1.jpg'),
+        osp.join(data_dir, "optflow_concat1.jpg"),
         quantize=True,
         concat_axis=1,
-        denorm=True)
+        denorm=True,
+    )
     assert flow.shape == flow_shape
 
     # test exceptions
-    notflow_file = osp.join(data_dir, 'color.jpg')
+    notflow_file = osp.join(data_dir, "color.jpg")
     with pytest.raises(TypeError):
         mmcv.flowread(1)
     with pytest.raises(IOError):
@@ -60,13 +62,12 @@ def test_flowwrite():
     os.remove(filename)
 
     # write to two .jpg files
-    tmp_filename = osp.join(tempfile.gettempdir(), 'mmcv_test_flow.jpg')
+    tmp_filename = osp.join(tempfile.gettempdir(), "mmcv_test_flow.jpg")
     for concat_axis in range(2):
-        mmcv.flowwrite(
-            flow, tmp_filename, quantize=True, concat_axis=concat_axis)
+        mmcv.flowwrite(flow, tmp_filename, quantize=True, concat_axis=concat_axis)
         shape = (200, 100) if concat_axis == 0 else (100, 200)
         assert osp.isfile(tmp_filename)
-        assert mmcv.imread(tmp_filename, flag='unchanged').shape == shape
+        assert mmcv.imread(tmp_filename, flag="unchanged").shape == shape
         os.remove(tmp_filename)
 
     # test exceptions
@@ -118,16 +119,15 @@ def test_dequantize_flow():
     ref = np.zeros_like(flow, dtype=np.float32)
     for i in range(ref.shape[0]):
         for j in range(ref.shape[1]):
-            ref[i, j,
-                0] = (float(dx[i, j] + 0.5) * 2 * max_val / 255 - max_val) * w
-            ref[i, j,
-                1] = (float(dy[i, j] + 0.5) * 2 * max_val / 255 - max_val) * h
+            ref[i, j, 0] = (float(dx[i, j] + 0.5) * 2 * max_val / 255 - max_val) * w
+            ref[i, j, 1] = (float(dy[i, j] + 0.5) * 2 * max_val / 255 - max_val) * h
     assert_array_almost_equal(flow, ref)
 
 
 def test_flow2rgb():
-    flow = np.array([[[0, 0], [0.5, 0.5], [1, 1], [2, 1], [3, np.inf]]],
-                    dtype=np.float32)
+    flow = np.array(
+        [[[0, 0], [0.5, 0.5], [1, 1], [2, 1], [3, np.inf]]], dtype=np.float32
+    )
     flow_img = mmcv.flow2rgb(flow)
     # yapf: disable
     assert_array_almost_equal(
@@ -147,8 +147,8 @@ def test_flow_warp():
     img[2, 2, 0] = 1
     flow = np.ones((5, 5, 2))
 
-    res_nn = mmcv.flow_warp(img, flow, interpolate_mode='nearest')
-    res_bi = mmcv.flow_warp(img, flow, interpolate_mode='bilinear')
+    res_nn = mmcv.flow_warp(img, flow, interpolate_mode="nearest")
+    res_bi = mmcv.flow_warp(img, flow, interpolate_mode="bilinear")
 
     assert_array_almost_equal(res_nn, res_bi, decimal=5)
 
@@ -160,14 +160,14 @@ def test_flow_warp():
 
     res_ = np.copy(img)
     res_[2, 2] = 0.5 * 0.3 + 0.75 * 0.5 * 0.3
-    res_bi = mmcv.flow_warp(img, flow, interpolate_mode='bilinear')
+    res_bi = mmcv.flow_warp(img, flow, interpolate_mode="bilinear")
     assert_array_almost_equal(res_, res_bi, decimal=5)
 
     with pytest.raises(NotImplementedError):
-        _ = mmcv.flow_warp(img, flow, interpolate_mode='xxx')
+        _ = mmcv.flow_warp(img, flow, interpolate_mode="xxx")
 
     with pytest.raises(AssertionError):
-        _ = mmcv.flow_warp(img, flow[:, :, 0], interpolate_mode='xxx')
+        _ = mmcv.flow_warp(img, flow[:, :, 0], interpolate_mode="xxx")
 
 
 def test_make_color_wheel():
@@ -249,14 +249,14 @@ def test_make_color_wheel():
 
 
 def test_flow_from_bytes():
-    data_dir = osp.join(osp.dirname(__file__), '../data')
+    data_dir = osp.join(osp.dirname(__file__), "../data")
     flow_shape = (60, 80, 2)
-    flow_file = osp.join(data_dir, 'optflow.flo')
+    flow_file = osp.join(data_dir, "optflow.flo")
 
     # read .flo file
     flow_fromfile = mmcv.flowread(flow_file)
 
-    with open(flow_file, 'rb') as f:
+    with open(flow_file, "rb") as f:
         flow_bytes = f.read()
     flow_frombytes = mmcv.flow_from_bytes(flow_bytes)
 
@@ -265,10 +265,10 @@ def test_flow_from_bytes():
 
 
 def test_sparse_flow_from_bytes():
-    data_dir = osp.join(osp.dirname(__file__), '../data')
-    flow_file = osp.join(data_dir, 'sparse_flow.png')
+    data_dir = osp.join(osp.dirname(__file__), "../data")
+    flow_file = osp.join(data_dir, "sparse_flow.png")
 
-    with open(flow_file, 'rb') as f:
+    with open(flow_file, "rb") as f:
         flow_bytes = f.read()
     # read flow from bytes
     flow_frombytes, valid_frombytes = mmcv.sparse_flow_from_bytes(flow_bytes)

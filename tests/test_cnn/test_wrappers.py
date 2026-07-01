@@ -7,21 +7,30 @@ import torch.nn as nn
 from mmengine.utils import digit_version
 from mmengine.utils.dl_utils import TORCH_VERSION
 
-from mmcv.cnn.bricks import (Conv2d, Conv3d, ConvTranspose2d, ConvTranspose3d,
-                             Linear, MaxPool2d, MaxPool3d)
+from mmcv.cnn.bricks import (
+    Conv2d,
+    Conv3d,
+    ConvTranspose2d,
+    ConvTranspose3d,
+    Linear,
+    MaxPool2d,
+    MaxPool3d,
+)
 
-if torch.__version__ != 'parrots':
-    torch_version = '1.1'
+if torch.__version__ != "parrots":
+    torch_version = "1.1"
 else:
-    torch_version = 'parrots'
+    torch_version = "parrots"
 
 
-@patch('torch.__version__', torch_version)
+@patch("torch.__version__", torch_version)
 @pytest.mark.parametrize(
-    'in_w,in_h,in_channel,out_channel,kernel_size,stride,padding,dilation',
-    [(10, 10, 1, 1, 3, 1, 0, 1), (20, 20, 3, 3, 5, 2, 1, 2)])
-def test_conv2d(in_w, in_h, in_channel, out_channel, kernel_size, stride,
-                padding, dilation):
+    "in_w,in_h,in_channel,out_channel,kernel_size,stride,padding,dilation",
+    [(10, 10, 1, 1, 3, 1, 0, 1), (20, 20, 3, 3, 5, 2, 1, 2)],
+)
+def test_conv2d(
+    in_w, in_h, in_channel, out_channel, kernel_size, stride, padding, dilation
+):
     """
     CommandLine:
         xdoctest -m tests/test_wrappers.py test_conv2d
@@ -36,7 +45,8 @@ def test_conv2d(in_w, in_h, in_channel, out_channel, kernel_size, stride,
         kernel_size,
         stride=stride,
         padding=padding,
-        dilation=dilation)
+        dilation=dilation,
+    )
     wrapper_out = wrapper(x_empty)
 
     # torch op with 3-dim input as shape reference
@@ -48,7 +58,8 @@ def test_conv2d(in_w, in_h, in_channel, out_channel, kernel_size, stride,
         kernel_size,
         stride=stride,
         padding=padding,
-        dilation=dilation)
+        dilation=dilation,
+    )
     ref_out = ref(x_normal)
 
     assert wrapper_out.shape[0] == 0
@@ -68,17 +79,20 @@ def test_conv2d(in_w, in_h, in_channel, out_channel, kernel_size, stride,
         kernel_size,
         stride=stride,
         padding=padding,
-        dilation=dilation)
+        dilation=dilation,
+    )
     wrapper.eval()
     wrapper(x_empty)
 
 
-@patch('torch.__version__', torch_version)
+@patch("torch.__version__", torch_version)
 @pytest.mark.parametrize(
-    'in_w,in_h,in_t,in_channel,out_channel,kernel_size,stride,padding,dilation',  # noqa: E501
-    [(10, 10, 10, 1, 1, 3, 1, 0, 1), (20, 20, 20, 3, 3, 5, 2, 1, 2)])
-def test_conv3d(in_w, in_h, in_t, in_channel, out_channel, kernel_size, stride,
-                padding, dilation):
+    "in_w,in_h,in_t,in_channel,out_channel,kernel_size,stride,padding,dilation",  # noqa: E501
+    [(10, 10, 10, 1, 1, 3, 1, 0, 1), (20, 20, 20, 3, 3, 5, 2, 1, 2)],
+)
+def test_conv3d(
+    in_w, in_h, in_t, in_channel, out_channel, kernel_size, stride, padding, dilation
+):
     """
     CommandLine:
         xdoctest -m tests/test_wrappers.py test_conv3d
@@ -93,12 +107,12 @@ def test_conv3d(in_w, in_h, in_t, in_channel, out_channel, kernel_size, stride,
         kernel_size,
         stride=stride,
         padding=padding,
-        dilation=dilation)
+        dilation=dilation,
+    )
     wrapper_out = wrapper(x_empty)
 
     # torch op with 3-dim input as shape reference
-    x_normal = torch.randn(3, in_channel, in_t, in_h,
-                           in_w).requires_grad_(True)
+    x_normal = torch.randn(3, in_channel, in_t, in_h, in_w).requires_grad_(True)
     torch.manual_seed(0)
     ref = nn.Conv3d(
         in_channel,
@@ -106,7 +120,8 @@ def test_conv3d(in_w, in_h, in_t, in_channel, out_channel, kernel_size, stride,
         kernel_size,
         stride=stride,
         padding=padding,
-        dilation=dilation)
+        dilation=dilation,
+    )
     ref_out = ref(x_normal)
 
     assert wrapper_out.shape[0] == 0
@@ -126,22 +141,25 @@ def test_conv3d(in_w, in_h, in_t, in_channel, out_channel, kernel_size, stride,
         kernel_size,
         stride=stride,
         padding=padding,
-        dilation=dilation)
+        dilation=dilation,
+    )
     wrapper.eval()
     wrapper(x_empty)
 
 
-@patch('torch.__version__', torch_version)
+@patch("torch.__version__", torch_version)
 @pytest.mark.parametrize(
-    'in_w,in_h,in_channel,out_channel,kernel_size,stride,padding,dilation',
-    [(10, 10, 1, 1, 3, 1, 0, 1), (20, 20, 3, 3, 5, 2, 1, 2)])
-def test_conv_transposed_2d(in_w, in_h, in_channel, out_channel, kernel_size,
-                            stride, padding, dilation):
+    "in_w,in_h,in_channel,out_channel,kernel_size,stride,padding,dilation",
+    [(10, 10, 1, 1, 3, 1, 0, 1), (20, 20, 3, 3, 5, 2, 1, 2)],
+)
+def test_conv_transposed_2d(
+    in_w, in_h, in_channel, out_channel, kernel_size, stride, padding, dilation
+):
     # wrapper op with 0-dim input
     x_empty = torch.randn(0, in_channel, in_h, in_w, requires_grad=True)
     # out padding must be smaller than either stride or dilation
     op = min(stride, dilation) - 1
-    if torch.__version__ == 'parrots':
+    if torch.__version__ == "parrots":
         op = 0
     torch.manual_seed(0)
     wrapper = ConvTranspose2d(
@@ -151,7 +169,8 @@ def test_conv_transposed_2d(in_w, in_h, in_channel, out_channel, kernel_size,
         stride=stride,
         padding=padding,
         dilation=dilation,
-        output_padding=op)
+        output_padding=op,
+    )
     wrapper_out = wrapper(x_empty)
 
     # torch op with 3-dim input as shape reference
@@ -164,7 +183,8 @@ def test_conv_transposed_2d(in_w, in_h, in_channel, out_channel, kernel_size,
         stride=stride,
         padding=padding,
         dilation=dilation,
-        output_padding=op)
+        output_padding=op,
+    )
     ref_out = ref(x_normal)
 
     assert wrapper_out.shape[0] == 0
@@ -185,17 +205,20 @@ def test_conv_transposed_2d(in_w, in_h, in_channel, out_channel, kernel_size,
         stride=stride,
         padding=padding,
         dilation=dilation,
-        output_padding=op)
+        output_padding=op,
+    )
     wrapper.eval()
     wrapper(x_empty)
 
 
-@patch('torch.__version__', torch_version)
+@patch("torch.__version__", torch_version)
 @pytest.mark.parametrize(
-    'in_w,in_h,in_t,in_channel,out_channel,kernel_size,stride,padding,dilation',  # noqa: E501
-    [(10, 10, 10, 1, 1, 3, 1, 0, 1), (20, 20, 20, 3, 3, 5, 2, 1, 2)])
-def test_conv_transposed_3d(in_w, in_h, in_t, in_channel, out_channel,
-                            kernel_size, stride, padding, dilation):
+    "in_w,in_h,in_t,in_channel,out_channel,kernel_size,stride,padding,dilation",  # noqa: E501
+    [(10, 10, 10, 1, 1, 3, 1, 0, 1), (20, 20, 20, 3, 3, 5, 2, 1, 2)],
+)
+def test_conv_transposed_3d(
+    in_w, in_h, in_t, in_channel, out_channel, kernel_size, stride, padding, dilation
+):
     # wrapper op with 0-dim input
     x_empty = torch.randn(0, in_channel, in_t, in_h, in_w, requires_grad=True)
     # out padding must be smaller than either stride or dilation
@@ -208,7 +231,8 @@ def test_conv_transposed_3d(in_w, in_h, in_t, in_channel, out_channel,
         stride=stride,
         padding=padding,
         dilation=dilation,
-        output_padding=op)
+        output_padding=op,
+    )
     wrapper_out = wrapper(x_empty)
 
     # torch op with 3-dim input as shape reference
@@ -221,7 +245,8 @@ def test_conv_transposed_3d(in_w, in_h, in_t, in_channel, out_channel,
         stride=stride,
         padding=padding,
         dilation=dilation,
-        output_padding=op)
+        output_padding=op,
+    )
     ref_out = ref(x_normal)
 
     assert wrapper_out.shape[0] == 0
@@ -242,27 +267,28 @@ def test_conv_transposed_3d(in_w, in_h, in_t, in_channel, out_channel,
         stride=stride,
         padding=padding,
         dilation=dilation,
-        output_padding=op)
+        output_padding=op,
+    )
     wrapper.eval()
     wrapper(x_empty)
 
 
-@patch('torch.__version__', torch_version)
+@patch("torch.__version__", torch_version)
 @pytest.mark.parametrize(
-    'in_w,in_h,in_channel,out_channel,kernel_size,stride,padding,dilation',
-    [(10, 10, 1, 1, 3, 1, 0, 1), (20, 20, 3, 3, 5, 2, 1, 2)])
-def test_max_pool_2d(in_w, in_h, in_channel, out_channel, kernel_size, stride,
-                     padding, dilation):
+    "in_w,in_h,in_channel,out_channel,kernel_size,stride,padding,dilation",
+    [(10, 10, 1, 1, 3, 1, 0, 1), (20, 20, 3, 3, 5, 2, 1, 2)],
+)
+def test_max_pool_2d(
+    in_w, in_h, in_channel, out_channel, kernel_size, stride, padding, dilation
+):
     # wrapper op with 0-dim input
     x_empty = torch.randn(0, in_channel, in_h, in_w, requires_grad=True)
-    wrapper = MaxPool2d(
-        kernel_size, stride=stride, padding=padding, dilation=dilation)
+    wrapper = MaxPool2d(kernel_size, stride=stride, padding=padding, dilation=dilation)
     wrapper_out = wrapper(x_empty)
 
     # torch op with 3-dim input as shape reference
     x_normal = torch.randn(3, in_channel, in_h, in_w)
-    ref = nn.MaxPool2d(
-        kernel_size, stride=stride, padding=padding, dilation=dilation)
+    ref = nn.MaxPool2d(kernel_size, stride=stride, padding=padding, dilation=dilation)
     ref_out = ref(x_normal)
 
     assert wrapper_out.shape[0] == 0
@@ -271,27 +297,28 @@ def test_max_pool_2d(in_w, in_h, in_channel, out_channel, kernel_size, stride,
     assert torch.equal(wrapper(x_normal), ref_out)
 
 
-@patch('torch.__version__', torch_version)
+@patch("torch.__version__", torch_version)
 @pytest.mark.parametrize(
-    'in_w,in_h,in_t,in_channel,out_channel,kernel_size,stride,padding,dilation',  # noqa: E501
-    [(10, 10, 10, 1, 1, 3, 1, 0, 1), (20, 20, 20, 3, 3, 5, 2, 1, 2)])
+    "in_w,in_h,in_t,in_channel,out_channel,kernel_size,stride,padding,dilation",  # noqa: E501
+    [(10, 10, 10, 1, 1, 3, 1, 0, 1), (20, 20, 20, 3, 3, 5, 2, 1, 2)],
+)
 @pytest.mark.skipif(
-    torch.__version__ == 'parrots' and not torch.cuda.is_available(),
-    reason='parrots requires CUDA support')
-def test_max_pool_3d(in_w, in_h, in_t, in_channel, out_channel, kernel_size,
-                     stride, padding, dilation):
+    torch.__version__ == "parrots" and not torch.cuda.is_available(),
+    reason="parrots requires CUDA support",
+)
+def test_max_pool_3d(
+    in_w, in_h, in_t, in_channel, out_channel, kernel_size, stride, padding, dilation
+):
     # wrapper op with 0-dim input
     x_empty = torch.randn(0, in_channel, in_t, in_h, in_w, requires_grad=True)
-    wrapper = MaxPool3d(
-        kernel_size, stride=stride, padding=padding, dilation=dilation)
-    if torch.__version__ == 'parrots':
+    wrapper = MaxPool3d(kernel_size, stride=stride, padding=padding, dilation=dilation)
+    if torch.__version__ == "parrots":
         x_empty = x_empty.cuda()
     wrapper_out = wrapper(x_empty)
     # torch op with 3-dim input as shape reference
     x_normal = torch.randn(3, in_channel, in_t, in_h, in_w)
-    ref = nn.MaxPool3d(
-        kernel_size, stride=stride, padding=padding, dilation=dilation)
-    if torch.__version__ == 'parrots':
+    ref = nn.MaxPool3d(kernel_size, stride=stride, padding=padding, dilation=dilation)
+    if torch.__version__ == "parrots":
         x_normal = x_normal.cuda()
     ref_out = ref(x_normal)
 
@@ -301,9 +328,10 @@ def test_max_pool_3d(in_w, in_h, in_t, in_channel, out_channel, kernel_size,
     assert torch.equal(wrapper(x_normal), ref_out)
 
 
-@patch('torch.__version__', torch_version)
-@pytest.mark.parametrize('in_w,in_h,in_feature,out_feature', [(10, 10, 1, 1),
-                                                              (20, 20, 3, 3)])
+@patch("torch.__version__", torch_version)
+@pytest.mark.parametrize(
+    "in_w,in_h,in_feature,out_feature", [(10, 10, 1, 1), (20, 20, 3, 3)]
+)
 def test_linear(in_w, in_h, in_feature, out_feature):
     # wrapper op with 0-dim input
     x_empty = torch.randn(0, in_feature, requires_grad=True)
@@ -333,11 +361,11 @@ def test_linear(in_w, in_h, in_feature, out_feature):
     wrapper(x_empty)
 
 
-@patch('mmcv.cnn.bricks.wrappers.TORCH_VERSION', (1, 10))
+@patch("mmcv.cnn.bricks.wrappers.TORCH_VERSION", (1, 10))
 def test_nn_op_forward_called():
 
-    for m in ['Conv2d', 'ConvTranspose2d', 'MaxPool2d']:
-        with patch(f'torch.nn.{m}.forward') as nn_module_forward:
+    for m in ["Conv2d", "ConvTranspose2d", "MaxPool2d"]:
+        with patch(f"torch.nn.{m}.forward") as nn_module_forward:
             # randn input
             x_empty = torch.randn(0, 3, 10, 10)
             wrapper = eval(m)(3, 2, 1)
@@ -350,8 +378,8 @@ def test_nn_op_forward_called():
             wrapper(x_normal)
             nn_module_forward.assert_called_with(x_normal)
 
-    for m in ['Conv3d', 'ConvTranspose3d', 'MaxPool3d']:
-        with patch(f'torch.nn.{m}.forward') as nn_module_forward:
+    for m in ["Conv3d", "ConvTranspose3d", "MaxPool3d"]:
+        with patch(f"torch.nn.{m}.forward") as nn_module_forward:
             # randn input
             x_empty = torch.randn(0, 3, 10, 10, 10)
             wrapper = eval(m)(3, 2, 1)
@@ -364,7 +392,7 @@ def test_nn_op_forward_called():
             wrapper(x_normal)
             nn_module_forward.assert_called_with(x_normal)
 
-    with patch('torch.nn.Linear.forward') as nn_module_forward:
+    with patch("torch.nn.Linear.forward") as nn_module_forward:
         # randn input
         x_empty = torch.randn(0, 3)
         wrapper = Linear(3, 3)
@@ -379,8 +407,9 @@ def test_nn_op_forward_called():
 
 
 @pytest.mark.skipif(
-    digit_version(TORCH_VERSION) < digit_version('1.10'),
-    reason='MaxPool2d and MaxPool3d will fail fx for torch<=1.9')
+    digit_version(TORCH_VERSION) < digit_version("1.10"),
+    reason="MaxPool2d and MaxPool3d will fail fx for torch<=1.9",
+)
 def test_fx_compatibility():
     from torch import fx
 
@@ -388,7 +417,7 @@ def test_fx_compatibility():
     for Net in (MaxPool2d, MaxPool3d):
         net = Net(1)
         gm_module = fx.symbolic_trace(net)  # noqa: F841
-    for Net in (Linear, ):
+    for Net in (Linear,):
         net = Net(1, 1)
         gm_module = fx.symbolic_trace(net)  # noqa: F841
     for Net in (Conv2d, ConvTranspose2d, Conv3d, ConvTranspose3d):

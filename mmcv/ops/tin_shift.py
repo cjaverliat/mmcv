@@ -10,8 +10,7 @@ from torch.autograd import Function
 
 from ..utils import ext_loader
 
-ext_module = ext_loader.load_ext('_ext',
-                                 ['tin_shift_forward', 'tin_shift_backward'])
+ext_module = ext_loader.load_ext("_ext", ["tin_shift_forward", "tin_shift_backward"])
 
 
 class TINShiftFunction(Function):
@@ -20,13 +19,16 @@ class TINShiftFunction(Function):
     def forward(ctx, input, shift):
         if input.size(0) != shift.size(0):
             raise ValueError(
-                'The first dim (batch) of `input` and `shift` should be '
-                f'same, but got {input.size(0)} and {shift.size(0)}.')
+                "The first dim (batch) of `input` and `shift` should be "
+                f"same, but got {input.size(0)} and {shift.size(0)}."
+            )
         C = input.size(2)
         num_segments = shift.size(1)
         if C // num_segments <= 0 or C % num_segments != 0:
-            raise ValueError('C should be a multiple of num_segments, '
-                             f'but got C={C} and num_segments={num_segments}.')
+            raise ValueError(
+                "C should be a multiple of num_segments, "
+                f"but got C={C} and num_segments={num_segments}."
+            )
 
         ctx.save_for_backward(shift)
 
@@ -52,8 +54,8 @@ tin_shift = TINShiftFunction.apply
 class TINShift(nn.Module):
     """Temporal Interlace Shift.
 
-    Temporal Interlace shift is a differentiable temporal-wise frame shifting
-    which is proposed in "Temporal Interlacing Network"
+    Temporal Interlace shift is a differentiable temporal-wise frame shifting which is
+    proposed in "Temporal Interlacing Network"
 
     Please refer to
     `Temporal Interlacing Network <https://arxiv.org/abs/2001.06499>`_

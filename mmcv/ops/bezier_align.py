@@ -10,19 +10,22 @@ from torch.nn.modules.utils import _pair
 from ..utils import ext_loader
 
 ext_module = ext_loader.load_ext(
-    '_ext', ['bezier_align_forward', 'bezier_align_backward'])
+    "_ext", ["bezier_align_forward", "bezier_align_backward"]
+)
 
 
 class BezierAlignFunction(Function):
 
     @staticmethod
-    def forward(ctx,
-                input: torch.Tensor,
-                beziers: torch.Tensor,
-                output_size: Union[int, Tuple[int, int]],
-                spatial_scale: Union[int, float] = 1.0,
-                sampling_ratio: int = 0,
-                aligned: bool = True) -> torch.Tensor:
+    def forward(
+        ctx,
+        input: torch.Tensor,
+        beziers: torch.Tensor,
+        output_size: Union[int, Tuple[int, int]],
+        spatial_scale: Union[int, float] = 1.0,
+        sampling_ratio: int = 0,
+        aligned: bool = True,
+    ) -> torch.Tensor:
         ctx.output_size = _pair(output_size)
         ctx.spatial_scale = spatial_scale
         ctx.input_shape = input.size()
@@ -30,8 +33,12 @@ class BezierAlignFunction(Function):
         ctx.aligned = aligned
 
         assert beziers.size(1) == 17
-        output_shape = (beziers.size(0), input.size(1), ctx.output_size[0],
-                        ctx.output_size[1])
+        output_shape = (
+            beziers.size(0),
+            input.size(1),
+            ctx.output_size[0],
+            ctx.output_size[1],
+        )
         output = input.new_zeros(output_shape)
         ext_module.bezier_align_forward(
             input,
@@ -41,7 +48,8 @@ class BezierAlignFunction(Function):
             aligned_width=ctx.output_size[1],
             spatial_scale=ctx.spatial_scale,
             sampling_ratio=ctx.sampling_ratio,
-            aligned=ctx.aligned)
+            aligned=ctx.aligned,
+        )
 
         ctx.save_for_backward(beziers)
         return output
@@ -60,7 +68,8 @@ class BezierAlignFunction(Function):
             aligned_width=ctx.output_size[1],
             spatial_scale=ctx.spatial_scale,
             sampling_ratio=ctx.sampling_ratio,
-            aligned=ctx.aligned)
+            aligned=ctx.aligned,
+        )
         return grad_input, None, None, None, None, None
 
 
@@ -116,22 +125,26 @@ class BezierAlign(nn.Module):
         self.sampling_ratio = int(sampling_ratio)
         self.aligned = aligned
 
-    def forward(self, input: torch.Tensor,
-                beziers: torch.Tensor) -> torch.Tensor:
+    def forward(self, input: torch.Tensor, beziers: torch.Tensor) -> torch.Tensor:
         """BezierAlign forward.
 
         Args:
             inputs (Tensor): input features.
             beziers (Tensor): beziers for align.
         """
-        return bezier_align(input, beziers, self.output_size,
-                            self.spatial_scale, self.sampling_ratio,
-                            self.aligned)
+        return bezier_align(
+            input,
+            beziers,
+            self.output_size,
+            self.spatial_scale,
+            self.sampling_ratio,
+            self.aligned,
+        )
 
     def __repr__(self):
         s = self.__class__.__name__
-        s += f'(output_size={self.output_size}, '
-        s += f'spatial_scale={self.spatial_scale})'
-        s += f'sampling_ratio={self.sampling_ratio})'
-        s += f'aligned={self.aligned})'
+        s += f"(output_size={self.output_size}, "
+        s += f"spatial_scale={self.spatial_scale})"
+        s += f"sampling_ratio={self.sampling_ratio})"
+        s += f"aligned={self.aligned})"
         return s

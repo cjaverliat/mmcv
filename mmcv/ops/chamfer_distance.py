@@ -9,14 +9,15 @@ from torch.autograd.function import once_differentiable
 from ..utils import ext_loader
 
 ext_module = ext_loader.load_ext(
-    '_ext', ['chamfer_distance_forward', 'chamfer_distance_backward'])
+    "_ext", ["chamfer_distance_forward", "chamfer_distance_backward"]
+)
 
 
 class ChamferDistanceFunction(Function):
     """This is an implementation of the 2D Chamfer Distance.
 
-    It has been used in the paper `Oriented RepPoints for Aerial Object
-    Detection (CVPR 2022)
+    It has been used in the paper `Oriented RepPoints for Aerial Object Detection (CVPR
+    2022)
     <https://arxiv.org/abs/2105.11111>_`.
     """
 
@@ -50,18 +51,15 @@ class ChamferDistanceFunction(Function):
         idx1 = torch.zeros(batch_size, n).type(torch.IntTensor).to(device)
         idx2 = torch.zeros(batch_size, m).type(torch.IntTensor).to(device)
 
-        ext_module.chamfer_distance_forward(xyz1, xyz2, dist1, dist2, idx1,
-                                            idx2)
+        ext_module.chamfer_distance_forward(xyz1, xyz2, dist1, dist2, idx1, idx2)
         ctx.save_for_backward(xyz1, xyz2, idx1, idx2)
         return dist1, dist2, idx1, idx2
 
     @staticmethod
     @once_differentiable
-    def backward(ctx,
-                 grad_dist1: Tensor,
-                 grad_dist2: Tensor,
-                 grad_idx1=None,
-                 grad_idx2=None) -> Tuple[Tensor, Tensor]:
+    def backward(
+        ctx, grad_dist1: Tensor, grad_dist2: Tensor, grad_idx1=None, grad_idx2=None
+    ) -> Tuple[Tensor, Tensor]:
         """
 
         Args:
@@ -85,9 +83,9 @@ class ChamferDistanceFunction(Function):
         grad_xyz1 = torch.zeros(xyz1.size()).type(xyz1.dtype).to(device)
         grad_xyz2 = torch.zeros(xyz2.size()).type(xyz2.dtype).to(device)
 
-        ext_module.chamfer_distance_backward(xyz1, xyz2, idx1, idx2,
-                                             grad_dist1, grad_dist2, grad_xyz1,
-                                             grad_xyz2)
+        ext_module.chamfer_distance_backward(
+            xyz1, xyz2, idx1, idx2, grad_dist1, grad_dist2, grad_xyz1, grad_xyz2
+        )
         return grad_xyz1, grad_xyz2
 
 

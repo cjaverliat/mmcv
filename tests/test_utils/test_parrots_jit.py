@@ -5,9 +5,10 @@ from mmengine.utils.dl_utils import TORCH_VERSION
 
 import mmcv
 
-pytest.skip('this test not ready now', allow_module_level=True)
+pytest.skip("this test not ready now", allow_module_level=True)
 skip_no_parrots = pytest.mark.skipif(
-    TORCH_VERSION != 'parrots', reason='test case under parrots environment')
+    TORCH_VERSION != "parrots", reason="test case under parrots environment"
+)
 
 
 class TestJit:
@@ -16,21 +17,21 @@ class TestJit:
 
         @mmcv.jit
         def add_dict(oper):
-            rets = oper['x'] + oper['y']
-            return {'result': rets}
+            rets = oper["x"] + oper["y"]
+            return {"result": rets}
 
         def add_dict_pyfunc(oper):
-            rets = oper['x'] + oper['y']
-            return {'result': rets}
+            rets = oper["x"] + oper["y"]
+            return {"result": rets}
 
         a = torch.rand((3, 4))
         b = torch.rand((3, 4))
-        oper = {'x': a, 'y': b}
+        oper = {"x": a, "y": b}
 
         rets_t = add_dict(oper)
         rets = add_dict_pyfunc(oper)
-        assert 'result' in rets
-        assert (rets_t['result'] == rets['result']).all()
+        assert "result" in rets
+        assert (rets_t["result"] == rets["result"]).all()
 
     def test_add_list(self):
 
@@ -38,61 +39,61 @@ class TestJit:
         def add_list(oper, x, y):
             rets = {}
             for idx, pair in enumerate(oper):
-                rets[f'k{idx}'] = pair['x'] + pair['y']
-            rets[f'k{len(oper)}'] = x + y
+                rets[f"k{idx}"] = pair["x"] + pair["y"]
+            rets[f"k{len(oper)}"] = x + y
             return rets
 
         def add_list_pyfunc(oper, x, y):
             rets = {}
             for idx, pair in enumerate(oper):
-                rets[f'k{idx}'] = pair['x'] + pair['y']
-            rets[f'k{len(oper)}'] = x + y
+                rets[f"k{idx}"] = pair["x"] + pair["y"]
+            rets[f"k{len(oper)}"] = x + y
             return rets
 
         pair_num = 3
         oper = []
         for _ in range(pair_num):
-            oper.append({'x': torch.rand((3, 4)), 'y': torch.rand((3, 4))})
+            oper.append({"x": torch.rand((3, 4)), "y": torch.rand((3, 4))})
         a = torch.rand((3, 4))
         b = torch.rand((3, 4))
         rets = add_list_pyfunc(oper, x=a, y=b)
         rets_t = add_list(oper, x=a, y=b)
         for idx in range(pair_num + 1):
-            assert f'k{idx}' in rets_t
-            assert (rets[f'k{idx}'] == rets_t[f'k{idx}']).all()
+            assert f"k{idx}" in rets_t
+            assert (rets[f"k{idx}"] == rets_t[f"k{idx}"]).all()
 
     @skip_no_parrots
     def test_jit_cache(self):
 
         @mmcv.jit
         def func(oper):
-            if oper['const'] > 1:
-                return oper['x'] * 2 + oper['y']
+            if oper["const"] > 1:
+                return oper["x"] * 2 + oper["y"]
             else:
-                return oper['x'] * 2 - oper['y']
+                return oper["x"] * 2 - oper["y"]
 
         def pyfunc(oper):
-            if oper['const'] > 1:
-                return oper['x'] * 2 + oper['y']
+            if oper["const"] > 1:
+                return oper["x"] * 2 + oper["y"]
             else:
-                return oper['x'] * 2 - oper['y']
+                return oper["x"] * 2 - oper["y"]
 
         assert len(func._cache._cache) == 0
 
-        oper = {'const': 2, 'x': torch.rand((3, 4)), 'y': torch.rand((3, 4))}
+        oper = {"const": 2, "x": torch.rand((3, 4)), "y": torch.rand((3, 4))}
         rets_plus = pyfunc(oper)
         rets_plus_t = func(oper)
         assert (rets_plus == rets_plus_t).all()
         assert len(func._cache._cache) == 1
 
-        oper['const'] = 0.5
+        oper["const"] = 0.5
         rets_minus = pyfunc(oper)
         rets_minus_t = func(oper)
         assert (rets_minus == rets_minus_t).all()
         assert len(func._cache._cache) == 2
 
         rets_a = (rets_minus_t + rets_plus_t) / 4
-        assert torch.allclose(oper['x'], rets_a)
+        assert torch.allclose(oper["x"], rets_a)
 
     @skip_no_parrots
     def test_jit_shape(self):
@@ -187,8 +188,8 @@ class TestJit:
         def pyfunc(a, b):
             return (a + b) * (a - b)
 
-        a = torch.rand((16, 32), device='cuda')
-        b = torch.rand((16, 32), device='cuda')
+        a = torch.rand((16, 32), device="cuda")
+        b = torch.rand((16, 32), device="cuda")
 
         c = func(a, b)
         d = pyfunc(a, b)
@@ -221,7 +222,7 @@ class TestJit:
 
         a = torch.ones((3, 4))
         with pytest.raises(AssertionError):
-            func = mmcv.jit(func, check_input=(a, ))
+            func = mmcv.jit(func, check_input=(a,))
 
     @skip_no_parrots
     def test_jit_partial_shape(self):

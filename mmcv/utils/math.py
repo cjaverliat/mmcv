@@ -1,14 +1,17 @@
+# Copyright (c) OpenMMLab. All rights reserved.
+from math import cos, radians, sin
+from typing import Optional, Union
+
 import torch
 import torch.nn.functional as F_t
-from math import radians, cos, sin
-from typing import Union, Optional
 
 
 def _torch_inverse_cast(input: torch.Tensor) -> torch.Tensor:
     """Make torch.inverse work with other than fp32/64.
 
-    The function torch.inverse is only implemented for fp32/64 which makes impossible to be used by fp16 or others. What
-    this function does, is cast input data type to fp32, apply torch.inverse, and cast back to the input dtype.
+    The function torch.inverse is only implemented for fp32/64 which makes impossible to
+    be used by fp16 or others. What this function does, is cast input data type to fp32,
+    apply torch.inverse, and cast back to the input dtype.
     """
     if not isinstance(input, torch.Tensor):
         raise AssertionError(f"Input must be Tensor. Got: {type(input)}.")
@@ -113,7 +116,6 @@ def normal_transform_pixel(
 
     Returns:
         normalized transform with shape :math:`(1, 3, 3)`.
-
     """
     tr_mat = torch.tensor(
         [[1.0, 0.0, -1.0], [0.0, 1.0, -1.0], [0.0, 0.0, 1.0]],
@@ -152,7 +154,10 @@ def normalize_homography(
         dst_pix_trans_src_pix = torch.concatenate(
             [
                 dst_pix_trans_src_pix,
-                torch.zeros((*dst_pix_trans_src_pix.shape[:-2], 1, 3), device=dst_pix_trans_src_pix.device),
+                torch.zeros(
+                    (*dst_pix_trans_src_pix.shape[:-2], 1, 3),
+                    device=dst_pix_trans_src_pix.device,
+                ),
             ],
             dim=-2,
         )
@@ -178,8 +183,7 @@ def normalize_homography(
 
 
 def get_affine_matrix(src_pts: torch.Tensor, dst_pts: torch.Tensor) -> torch.Tensor:
-    """
-    Compute the affine transformation matrix that maps src_points to dst_points.
+    """Compute the affine transformation matrix that maps src_points to dst_points.
 
     Args:
         src_pts: Tensor of shape (n, 2) containing source points
@@ -192,9 +196,9 @@ def get_affine_matrix(src_pts: torch.Tensor, dst_pts: torch.Tensor) -> torch.Ten
     """
     # We need at least 3 points to determine an affine transformation
     assert src_pts.shape[0] >= 3, "At least 3 points are required"
-    assert src_pts.shape == dst_pts.shape, (
-        "Source and destination points must have the same shape"
-    )
+    assert (
+        src_pts.shape == dst_pts.shape
+    ), "Source and destination points must have the same shape"
 
     n = src_pts.shape[0]
     A = torch.zeros((2 * n, 6), dtype=src_pts.dtype, device=src_pts.device)
@@ -382,7 +386,6 @@ def _fill_and_warp(
 
     Returns:
         the warped and filled tensor with shape :math:`(B, 3, H, W)`.
-
     """
     ones_mask = torch.ones_like(src, device=src.device, dtype=src.dtype)
     fill_value = fill_value.to(ones_mask)[

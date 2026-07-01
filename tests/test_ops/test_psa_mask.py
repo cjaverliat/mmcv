@@ -4,8 +4,12 @@ import pytest
 import torch
 import torch.nn as nn
 
-from mmcv.utils import (IS_CUDA_AVAILABLE, IS_MLU_AVAILABLE, IS_MUSA_AVAILABLE,
-                        IS_NPU_AVAILABLE)
+from mmcv.utils import (
+    IS_CUDA_AVAILABLE,
+    IS_MLU_AVAILABLE,
+    IS_MUSA_AVAILABLE,
+    IS_NPU_AVAILABLE,
+)
 
 
 class Loss(nn.Module):
@@ -21,32 +25,44 @@ class Loss(nn.Module):
 
 class TestPSAMask:
 
-    @pytest.mark.parametrize('device', [
-        pytest.param(
-            'cuda',
-            marks=pytest.mark.skipif(
-                not IS_CUDA_AVAILABLE, reason='requires CUDA support')),
-        pytest.param(
-            'mlu',
-            marks=pytest.mark.skipif(
-                not IS_MLU_AVAILABLE, reason='requires MLU support')),
-        pytest.param(
-            'npu',
-            marks=pytest.mark.skipif(
-                not IS_NPU_AVAILABLE, reason='requires NPU support')),
-        pytest.param(
-            'musa',
-            marks=pytest.mark.skipif(
-                not IS_MUSA_AVAILABLE, reason='requires MUSA support'))
-    ])
+    @pytest.mark.parametrize(
+        "device",
+        [
+            pytest.param(
+                "cuda",
+                marks=pytest.mark.skipif(
+                    not IS_CUDA_AVAILABLE, reason="requires CUDA support"
+                ),
+            ),
+            pytest.param(
+                "mlu",
+                marks=pytest.mark.skipif(
+                    not IS_MLU_AVAILABLE, reason="requires MLU support"
+                ),
+            ),
+            pytest.param(
+                "npu",
+                marks=pytest.mark.skipif(
+                    not IS_NPU_AVAILABLE, reason="requires NPU support"
+                ),
+            ),
+            pytest.param(
+                "musa",
+                marks=pytest.mark.skipif(
+                    not IS_MUSA_AVAILABLE, reason="requires MUSA support"
+                ),
+            ),
+        ],
+    )
     def test_psa_mask_collect(self, device):
         from mmcv.ops import PSAMask
+
         test_loss = Loss()
 
-        input = np.fromfile(
-            'tests/data/for_psa_mask/psa_input.bin', dtype=np.float32)
+        input = np.fromfile("tests/data/for_psa_mask/psa_input.bin", dtype=np.float32)
         output_collect = np.fromfile(
-            'tests/data/for_psa_mask/psa_output_collect.bin', dtype=np.float32)
+            "tests/data/for_psa_mask/psa_output_collect.bin", dtype=np.float32
+        )
 
         input = input.reshape((4, 16, 8, 8))
         output_collect = output_collect.reshape((4, 64, 8, 8))
@@ -55,7 +71,7 @@ class TestPSAMask:
         input = torch.FloatTensor(input)
         input.requires_grad = True
 
-        psamask_collect = PSAMask('collect', (4, 4))
+        psamask_collect = PSAMask("collect", (4, 4))
 
         # test collect cpu
         test_output = psamask_collect(input)
@@ -77,33 +93,44 @@ class TestPSAMask:
         assert np.allclose(test_output, output_collect)
         assert test_output.shape == output_collect.shape
 
-    @pytest.mark.parametrize('device', [
-        pytest.param(
-            'cuda',
-            marks=pytest.mark.skipif(
-                not IS_CUDA_AVAILABLE, reason='requires CUDA support')),
-        pytest.param(
-            'mlu',
-            marks=pytest.mark.skipif(
-                not IS_MLU_AVAILABLE, reason='requires MLU support')),
-        pytest.param(
-            'npu',
-            marks=pytest.mark.skipif(
-                not IS_NPU_AVAILABLE, reason='requires NPU support')),
-        pytest.param(
-            'musa',
-            marks=pytest.mark.skipif(
-                not IS_MUSA_AVAILABLE, reason='requires MUSA support'))
-    ])
+    @pytest.mark.parametrize(
+        "device",
+        [
+            pytest.param(
+                "cuda",
+                marks=pytest.mark.skipif(
+                    not IS_CUDA_AVAILABLE, reason="requires CUDA support"
+                ),
+            ),
+            pytest.param(
+                "mlu",
+                marks=pytest.mark.skipif(
+                    not IS_MLU_AVAILABLE, reason="requires MLU support"
+                ),
+            ),
+            pytest.param(
+                "npu",
+                marks=pytest.mark.skipif(
+                    not IS_NPU_AVAILABLE, reason="requires NPU support"
+                ),
+            ),
+            pytest.param(
+                "musa",
+                marks=pytest.mark.skipif(
+                    not IS_MUSA_AVAILABLE, reason="requires MUSA support"
+                ),
+            ),
+        ],
+    )
     def test_psa_mask_distribute(self, device):
         from mmcv.ops import PSAMask
+
         test_loss = Loss()
 
-        input = np.fromfile(
-            'tests/data/for_psa_mask/psa_input.bin', dtype=np.float32)
+        input = np.fromfile("tests/data/for_psa_mask/psa_input.bin", dtype=np.float32)
         output_distribute = np.fromfile(
-            'tests/data/for_psa_mask/psa_output_distribute.bin',
-            dtype=np.float32)
+            "tests/data/for_psa_mask/psa_output_distribute.bin", dtype=np.float32
+        )
 
         input = input.reshape((4, 16, 8, 8))
         output_distribute = output_distribute.reshape((4, 64, 8, 8))
@@ -112,7 +139,7 @@ class TestPSAMask:
         input = torch.FloatTensor(input)
         input.requires_grad = True
 
-        psamask_distribute = PSAMask('distribute', (4, 4))
+        psamask_distribute = PSAMask("distribute", (4, 4))
 
         # test distribute cpu
         test_output = psamask_distribute(input)

@@ -11,19 +11,18 @@ from torch import Tensor
 def conv3x3(in_planes: int, out_planes: int, dilation: int = 1) -> nn.Module:
     """3x3 convolution with padding."""
     return nn.Conv2d(
-        in_planes,
-        out_planes,
-        kernel_size=3,
-        padding=dilation,
-        dilation=dilation)
+        in_planes, out_planes, kernel_size=3, padding=dilation, dilation=dilation
+    )
 
 
-def make_vgg_layer(inplanes: int,
-                   planes: int,
-                   num_blocks: int,
-                   dilation: int = 1,
-                   with_bn: bool = False,
-                   ceil_mode: bool = False) -> List[nn.Module]:
+def make_vgg_layer(
+    inplanes: int,
+    planes: int,
+    num_blocks: int,
+    dilation: int = 1,
+    with_bn: bool = False,
+    ceil_mode: bool = False,
+) -> List[nn.Module]:
     layers = []
     for _ in range(num_blocks):
         layers.append(conv3x3(inplanes, planes, dilation))
@@ -57,24 +56,26 @@ class VGG(nn.Module):
         11: (1, 1, 2, 2, 2),
         13: (2, 2, 2, 2, 2),
         16: (2, 2, 3, 3, 3),
-        19: (2, 2, 4, 4, 4)
+        19: (2, 2, 4, 4, 4),
     }
 
-    def __init__(self,
-                 depth: int,
-                 with_bn: bool = False,
-                 num_classes: int = -1,
-                 num_stages: int = 5,
-                 dilations: Sequence[int] = (1, 1, 1, 1, 1),
-                 out_indices: Sequence[int] = (0, 1, 2, 3, 4),
-                 frozen_stages: int = -1,
-                 bn_eval: bool = True,
-                 bn_frozen: bool = False,
-                 ceil_mode: bool = False,
-                 with_last_pool: bool = True):
+    def __init__(
+        self,
+        depth: int,
+        with_bn: bool = False,
+        num_classes: int = -1,
+        num_stages: int = 5,
+        dilations: Sequence[int] = (1, 1, 1, 1, 1),
+        out_indices: Sequence[int] = (0, 1, 2, 3, 4),
+        frozen_stages: int = -1,
+        bn_eval: bool = True,
+        bn_frozen: bool = False,
+        ceil_mode: bool = False,
+        with_last_pool: bool = True,
+    ):
         super().__init__()
         if depth not in self.arch_settings:
-            raise KeyError(f'invalid depth {depth} for vgg')
+            raise KeyError(f"invalid depth {depth} for vgg")
         assert num_stages >= 1 and num_stages <= 5
         stage_blocks = self.arch_settings[depth]
         self.stage_blocks = stage_blocks[:num_stages]
@@ -102,7 +103,8 @@ class VGG(nn.Module):
                 num_blocks,
                 dilation=dilation,
                 with_bn=with_bn,
-                ceil_mode=ceil_mode)
+                ceil_mode=ceil_mode,
+            )
             vgg_layers.extend(vgg_layer)
             self.inplanes = planes
             self.range_sub_modules.append([start_idx, end_idx])
@@ -110,7 +112,7 @@ class VGG(nn.Module):
         if not with_last_pool:
             vgg_layers.pop(-1)
             self.range_sub_modules[-1][1] -= 1
-        self.module_name = 'features'
+        self.module_name = "features"
         self.add_module(self.module_name, nn.Sequential(*vgg_layers))
 
         if self.num_classes > 0:
@@ -137,7 +139,7 @@ class VGG(nn.Module):
                 elif isinstance(m, nn.Linear):
                     normal_init(m, std=0.01)
         else:
-            raise TypeError('pretrained must be a str or None')
+            raise TypeError("pretrained must be a str or None")
 
     def forward(self, x: Tensor) -> Union[Tensor, Tuple[Tensor, ...]]:
         outs = []

@@ -5,13 +5,14 @@ import torch
 
 from ..utils import ext_loader
 
-ext_module = ext_loader.load_ext('_ext', ['convex_iou', 'convex_giou'])
+ext_module = ext_loader.load_ext("_ext", ["convex_iou", "convex_giou"])
 
 
-def convex_giou(pointsets: torch.Tensor,
-                polygons: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-    """Return generalized intersection-over-union (Jaccard index) between point
-    sets and polygons.
+def convex_giou(
+    pointsets: torch.Tensor, polygons: torch.Tensor
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """Return generalized intersection-over-union (Jaccard index) between point sets and
+    polygons.
 
     Args:
         pointsets (torch.Tensor): It has shape (N, 18),
@@ -31,10 +32,8 @@ def convex_giou(pointsets: torch.Tensor,
     return convex_giou, points_grad
 
 
-def convex_iou(pointsets: torch.Tensor,
-               polygons: torch.Tensor) -> torch.Tensor:
-    """Return intersection-over-union (Jaccard index) between point sets and
-    polygons.
+def convex_iou(pointsets: torch.Tensor, polygons: torch.Tensor) -> torch.Tensor:
+    """Return intersection-over-union (Jaccard index) between point sets and polygons.
 
     Args:
         pointsets (torch.Tensor): It has shape (N, 18),

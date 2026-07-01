@@ -26,8 +26,7 @@ def test_sacconv():
     deform_saconv = SAConv2d(3, 5, kernel_size=3, padding=1, use_deform=True)
     if torch.cuda.is_available():
         x = torch.rand(1, 3, 256, 256).cuda()
-        deform_saconv = SAConv2d(
-            3, 5, kernel_size=3, padding=1, use_deform=True).cuda()
+        deform_saconv = SAConv2d(3, 5, kernel_size=3, padding=1, use_deform=True).cuda()
         deform_sac_out = deform_saconv(x).cuda()
         refer_conv = nn.Conv2d(3, 5, kernel_size=3, padding=1).cuda()
         refer_out = refer_conv(x)

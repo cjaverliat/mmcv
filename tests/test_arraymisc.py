@@ -12,16 +12,15 @@ def test_quantize():
 
     qarr = mmcv.quantize(arr, -1, 1, levels)
     assert qarr.shape == arr.shape
-    assert qarr.dtype == np.dtype('int64')
+    assert qarr.dtype == np.dtype("int64")
     for i in range(arr.shape[0]):
         for j in range(arr.shape[1]):
-            ref = min(levels - 1,
-                      int(np.floor(10 * (1 + max(min(arr[i, j], 1), -1)))))
+            ref = min(levels - 1, int(np.floor(10 * (1 + max(min(arr[i, j], 1), -1)))))
             assert qarr[i, j] == ref
 
     qarr = mmcv.quantize(arr, -1, 1, 20, dtype=np.uint8)
     assert qarr.shape == arr.shape
-    assert qarr.dtype == np.dtype('uint8')
+    assert qarr.dtype == np.dtype("uint8")
 
     with pytest.raises(ValueError):
         mmcv.quantize(arr, -1, 1, levels=0)
@@ -37,14 +36,14 @@ def test_dequantize():
 
     arr = mmcv.dequantize(qarr, -1, 1, levels)
     assert arr.shape == qarr.shape
-    assert arr.dtype == np.dtype('float64')
+    assert arr.dtype == np.dtype("float64")
     for i in range(qarr.shape[0]):
         for j in range(qarr.shape[1]):
             assert arr[i, j] == (qarr[i, j] + 0.5) / 10 - 1
 
     arr = mmcv.dequantize(qarr, -1, 1, levels, dtype=np.float32)
     assert arr.shape == qarr.shape
-    assert arr.dtype == np.dtype('float32')
+    assert arr.dtype == np.dtype("float32")
 
     with pytest.raises(ValueError):
         mmcv.dequantize(arr, -1, 1, levels=0)

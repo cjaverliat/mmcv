@@ -10,8 +10,8 @@ from .builder import TRANSFORMS
 
 
 def to_tensor(
-    data: Union[torch.Tensor, np.ndarray, Sequence, int,
-                float]) -> torch.Tensor:
+    data: Union[torch.Tensor, np.ndarray, Sequence, int, float]
+) -> torch.Tensor:
     """Convert objects of various python types to :obj:`torch.Tensor`.
 
     Supported types are: :class:`numpy.ndarray`, :class:`torch.Tensor`,
@@ -36,7 +36,7 @@ def to_tensor(
     elif isinstance(data, float):
         return torch.FloatTensor([data])
     else:
-        raise TypeError(f'type {type(data)} cannot be converted to tensor.')
+        raise TypeError(f"type {type(data)} cannot be converted to tensor.")
 
 
 @TRANSFORMS.register_module()
@@ -68,11 +68,11 @@ class ToTensor(BaseTransform):
         """
         for key in self.keys:
 
-            key_list = key.split('.')
+            key_list = key.split(".")
             cur_item = results
             for i in range(len(key_list)):
                 if key_list[i] not in cur_item:
-                    raise KeyError(f'Can not find key {key}')
+                    raise KeyError(f"Can not find key {key}")
                 if i == len(key_list) - 1:
                     cur_item[key_list[i]] = to_tensor(cur_item[key_list[i]])
                     break
@@ -81,7 +81,7 @@ class ToTensor(BaseTransform):
         return results
 
     def __repr__(self) -> str:
-        return self.__class__.__name__ + f'(keys={self.keys})'
+        return self.__class__.__name__ + f"(keys={self.keys})"
 
 
 @TRANSFORMS.register_module()
@@ -108,8 +108,8 @@ class ImageToTensor(BaseTransform):
         self.keys = keys
 
     def transform(self, results: dict) -> dict:
-        """Transform function to convert image in results to
-        :obj:`torch.Tensor` and transpose the channel order.
+        """Transform function to convert image in results to :obj:`torch.Tensor` and
+        transpose the channel order.
 
         Args:
             results (dict): Result dict contains the image data to convert.
@@ -125,4 +125,4 @@ class ImageToTensor(BaseTransform):
         return results
 
     def __repr__(self) -> str:
-        return self.__class__.__name__ + f'(keys={self.keys})'
+        return self.__class__.__name__ + f"(keys={self.keys})"

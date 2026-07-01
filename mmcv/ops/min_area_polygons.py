@@ -3,7 +3,7 @@ import torch
 
 from ..utils import ext_loader
 
-ext_module = ext_loader.load_ext('_ext', ['min_area_polygons'])
+ext_module = ext_loader.load_ext("_ext", ["min_area_polygons"])
 
 
 def min_area_polygons(pointsets: torch.Tensor) -> torch.Tensor:

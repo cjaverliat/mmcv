@@ -4,21 +4,21 @@ from typing import Literal, Optional
 
 import mmengine.fileio as fileio
 import numpy as np
-
 import PIL.Image
 import torch
 import torchvision.transforms.v2.functional as F_tv
-from torchvision.io import read_image, ImageReadMode
+from torchvision.io import ImageReadMode, read_image
+
 import mmcv
+
 from .base import BaseTransform
 from .builder import TRANSFORMS
 
 
 @TRANSFORMS.register_module()
 class LoadImage(BaseTransform):
-    """
-    Load an image from a file path or a numpy array, PIL image, or tensor.
-    All images are assumed to be in BGR format, and the channel layout is HWC.
+    """Load an image from a file path or a numpy array, PIL image, or tensor. All images
+    are assumed to be in BGR format, and the channel layout is HWC.
 
     Required Keys:
         - img_path
@@ -80,17 +80,15 @@ class LoadImage(BaseTransform):
         if img is None and filename is not None:
             try:
                 if self.color_type == "color":
-                    img: torch.Tensor = read_image(filename, mode=ImageReadMode.RGB)
+                    img = read_image(filename, mode=ImageReadMode.RGB)
                     # RGB -> BGR
                     img = img[..., ::-1]
                 elif self.color_type == "grayscale":
-                    img: torch.Tensor = read_image(filename, mode=ImageReadMode.GRAY)
+                    img = read_image(filename, mode=ImageReadMode.GRAY)
                     # To 3-channel image
                     img = img.repeat(3, 1, 1)
                 elif self.color_type == "unchanged":
-                    img: torch.Tensor = read_image(
-                        filename, mode=ImageReadMode.UNCHANGED
-                    )
+                    img = read_image(filename, mode=ImageReadMode.UNCHANGED)
                     img = img.squeeze()
                 else:
                     raise ValueError(f"Invalid color_type: {self.color_type}")
@@ -277,8 +275,8 @@ class LoadImageFromFile(BaseTransform):
 
 @TRANSFORMS.register_module()
 class LoadAnnotations(BaseTransform):
-    """Load and process the ``instances`` and ``seg_map`` annotation provided
-    by dataset.
+    """Load and process the ``instances`` and ``seg_map`` annotation provided by
+    dataset.
 
     The annotation format is as the following:
 

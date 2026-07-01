@@ -40,41 +40,40 @@ def collect_env():
     # environment information, so it is added here. When MMEngine v0.3.0 is
     # released, the code here can be removed.
     cuda_available = torch.cuda.is_available()
-    if cuda_available and env_info.get('NVCC') == 'Not Available':
-        CUDA_HOME = env_info['CUDA_HOME']
+    if cuda_available and env_info.get("NVCC") == "Not Available":
+        CUDA_HOME = env_info["CUDA_HOME"]
         if CUDA_HOME is not None and osp.isdir(CUDA_HOME):
-            if CUDA_HOME == '/opt/rocm':
+            if CUDA_HOME == "/opt/rocm":
                 try:
-                    nvcc = osp.join(CUDA_HOME, 'hip/bin/hipcc')
-                    nvcc = subprocess.check_output(
-                        f'"{nvcc}" --version', shell=True)
-                    nvcc = nvcc.decode('utf-8').strip()
-                    release = nvcc.rfind('HIP version:')
-                    build = nvcc.rfind('')
+                    nvcc = osp.join(CUDA_HOME, "hip/bin/hipcc")
+                    nvcc = subprocess.check_output(f'"{nvcc}" --version', shell=True)
+                    nvcc = nvcc.decode("utf-8").strip()
+                    release = nvcc.rfind("HIP version:")
+                    build = nvcc.rfind("")
                     nvcc = nvcc[release:build].strip()
                 except subprocess.SubprocessError:
-                    nvcc = 'Not Available'
+                    nvcc = "Not Available"
             else:
                 try:
-                    nvcc = osp.join(CUDA_HOME, 'bin/nvcc')
+                    nvcc = osp.join(CUDA_HOME, "bin/nvcc")
                     nvcc = subprocess.check_output(f'"{nvcc}" -V', shell=True)
-                    nvcc = nvcc.decode('utf-8').strip()
-                    release = nvcc.rfind('Cuda compilation tools')
-                    build = nvcc.rfind('Build ')
+                    nvcc = nvcc.decode("utf-8").strip()
+                    release = nvcc.rfind("Cuda compilation tools")
+                    build = nvcc.rfind("Build ")
                     nvcc = nvcc[release:build].strip()
                 except subprocess.SubprocessError:
-                    nvcc = 'Not Available'
-            env_info['NVCC'] = nvcc
+                    nvcc = "Not Available"
+            env_info["NVCC"] = nvcc
 
-    env_info['MMCV'] = mmcv.__version__
+    env_info["MMCV"] = mmcv.__version__
 
     try:
         from mmcv.ops import get_compiler_version, get_compiling_cuda_version
     except ModuleNotFoundError:
-        env_info['MMCV Compiler'] = 'n/a'
-        env_info['MMCV CUDA Compiler'] = 'n/a'
+        env_info["MMCV Compiler"] = "n/a"
+        env_info["MMCV CUDA Compiler"] = "n/a"
     else:
-        env_info['MMCV Compiler'] = get_compiler_version()
-        env_info['MMCV CUDA Compiler'] = get_compiling_cuda_version()
+        env_info["MMCV Compiler"] = get_compiler_version()
+        env_info["MMCV CUDA Compiler"] = get_compiling_cuda_version()
 
     return env_info

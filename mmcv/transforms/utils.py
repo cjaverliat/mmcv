@@ -13,8 +13,7 @@ from .base import BaseTransform
 
 
 class cache_randomness:
-    """Decorator that marks the method with random return value(s) in a
-    transform class.
+    """Decorator that marks the method with random return value(s) in a transform class.
 
     This decorator is usually used together with the context-manager
     :func`:cache_random_params`. In this context, a decorated method will
@@ -29,13 +28,15 @@ class cache_randomness:
 
         # Check `func` is to be bound as an instance method
         if not inspect.isfunction(func):
-            raise TypeError('Unsupport callable to decorate with'
-                            '@cache_randomness.')
-        func_args = inspect.getfullargspec(func).args
-        if len(func_args) == 0 or func_args[0] != 'self':
             raise TypeError(
-                '@cache_randomness should only be used to decorate '
-                'instance methods (the first argument is ``self``).')
+                "Unsupported callable to decorate with" "@cache_randomness."
+            )
+        func_args = inspect.getfullargspec(func).args
+        if len(func_args) == 0 or func_args[0] != "self":
+            raise TypeError(
+                "@cache_randomness should only be used to decorate "
+                "instance methods (the first argument is ``self``)."
+            )
 
         functools.update_wrapper(self, func)
         self.func = func
@@ -43,8 +44,8 @@ class cache_randomness:
 
     def __set_name__(self, owner, name):
         # Maintain a record of decorated methods in the class
-        if not hasattr(owner, '_methods_with_randomness'):
-            setattr(owner, '_methods_with_randomness', [])
+        if not hasattr(owner, "_methods_with_randomness"):
+            setattr(owner, "_methods_with_randomness", [])
 
         # Here `name` equals to `self.__name__`, i.e., the name of the
         # decorated function, due to the invocation of `update_wrapper` in
@@ -59,14 +60,14 @@ class cache_randomness:
 
         # Check the flag ``self._cache_enabled``, which should be
         # set by the contextmanagers like ``cache_random_parameters```
-        cache_enabled = getattr(instance, '_cache_enabled', False)
+        cache_enabled = getattr(instance, "_cache_enabled", False)
 
         if cache_enabled:
             # Initialize the cache of the transform instances. The flag
             # ``cache_enabled``` is set by contextmanagers like
             # ``cache_random_params```.
-            if not hasattr(instance, '_cache'):
-                setattr(instance, '_cache', {})
+            if not hasattr(instance, "_cache"):
+                setattr(instance, "_cache", {})
 
             if name not in instance._cache:
                 instance._cache[name] = self.func(instance, *args, **kwargs)
@@ -74,7 +75,7 @@ class cache_randomness:
             return instance._cache[name]
         else:
             # Clear cache
-            if hasattr(instance, '_cache'):
+            if hasattr(instance, "_cache"):
                 del instance._cache
             # Return function output
             return self.func(instance, *args, **kwargs)
@@ -88,9 +89,9 @@ class cache_randomness:
 
 
 def avoid_cache_randomness(cls):
-    """Decorator that marks a data transform class (subclass of
-    :class:`BaseTransform`) prohibited from caching randomness. With this
-    decorator, errors will be raised in following cases:
+    """Decorator that marks a data transform class (subclass of :class:`BaseTransform`)
+    prohibited from caching randomness. With this decorator, errors will be raised in
+    following cases:
 
         1. A method is defined in the class with the decorate
     `cache_randomness`;
@@ -109,12 +110,13 @@ def avoid_cache_randomness(cls):
     assert issubclass(cls, BaseTransform)
 
     # Check that no method is decorated with `cache_randomness` in cls
-    if getattr(cls, '_methods_with_randomness', None):
+    if getattr(cls, "_methods_with_randomness", None):
         raise RuntimeError(
-            f'Class {cls.__name__} decorated with '
-            '``avoid_cache_randomness`` should not have methods decorated '
-            'with ``cache_randomness`` (invalid methods: '
-            f'{cls._methods_with_randomness})')
+            f"Class {cls.__name__} decorated with "
+            "``avoid_cache_randomness`` should not have methods decorated "
+            "with ``cache_randomness`` (invalid methods: "
+            f"{cls._methods_with_randomness})"
+        )
 
     class AvoidCacheRandomness:
 
@@ -124,7 +126,7 @@ def avoid_cache_randomness(cls):
             # `objtype._avoid_cache_randomness`. So if the base class is
             # decorated with :func:`avoid_cache_randomness`, it will not be
             # inherited by subclasses.
-            return objtype.__dict__.get('_avoid_cache_randomness', False)
+            return objtype.__dict__.get("_avoid_cache_randomness", False)
 
     cls.avoid_cache_randomness = AvoidCacheRandomness()
     cls._avoid_cache_randomness = True
@@ -134,8 +136,8 @@ def avoid_cache_randomness(cls):
 
 @contextmanager
 def cache_random_params(transforms: Union[BaseTransform, Iterable]):
-    """Context-manager that enables the cache of return values of methods
-    decorated with ``cache_randomness`` in transforms.
+    """Context-manager that enables the cache of return values of methods decorated with
+    ``cache_randomness`` in transforms.
 
     In this mode, decorated methods will cache their return values on the
     first invoking, and always return the cached value afterward. This allow
@@ -159,7 +161,7 @@ def cache_random_params(transforms: Union[BaseTransform, Iterable]):
 
     def _add_invoke_counter(obj, method_name):
         method = getattr(obj, method_name)
-        key = f'{id(obj)}.{method_name}'
+        key = f"{id(obj)}.{method_name}"
         key2method[key] = method
 
         @functools.wraps(method)
@@ -173,73 +175,76 @@ def cache_random_params(transforms: Union[BaseTransform, Iterable]):
         # check that the method in _methods_with_randomness has been
         # invoked at most once
         method = getattr(obj, method_name)
-        key = f'{id(obj)}.{method_name}'
+        key = f"{id(obj)}.{method_name}"
         key2method[key] = method
 
         @functools.wraps(method)
         def wrapped(*args, **kwargs):
             # clear counter
             for name in obj._methods_with_randomness:
-                key = f'{id(obj)}.{name}'
+                key = f"{id(obj)}.{name}"
                 key2counter[key] = 0
 
             output = method(*args, **kwargs)
 
             for name in obj._methods_with_randomness:
-                key = f'{id(obj)}.{name}'
+                key = f"{id(obj)}.{name}"
                 if key2counter[key] > 1:
                     raise RuntimeError(
-                        'The method decorated with ``cache_randomness`` '
-                        'should be invoked at most once during processing '
-                        f'one data sample. The method {name} of {obj} has '
-                        f'been invoked {key2counter[key]} times.')
+                        "The method decorated with ``cache_randomness`` "
+                        "should be invoked at most once during processing "
+                        f"one data sample. The method {name} of {obj} has "
+                        f"been invoked {key2counter[key]} times."
+                    )
             return output
 
         return wrapped
 
     def _start_cache(t: BaseTransform):
         # Check if cache is allowed for `t`
-        if getattr(t, 'avoid_cache_randomness', False):
+        if getattr(t, "avoid_cache_randomness", False):
             raise RuntimeError(
-                f'Class {t.__class__.__name__} decorated with '
-                '``avoid_cache_randomness`` is not allowed to be used with'
-                ' ``cache_random_params`` (e.g. wrapped by '
-                '``ApplyToMultiple`` with ``share_random_params==True``).')
+                f"Class {t.__class__.__name__} decorated with "
+                "``avoid_cache_randomness`` is not allowed to be used with"
+                " ``cache_random_params`` (e.g. wrapped by "
+                "``ApplyToMultiple`` with ``share_random_params==True``)."
+            )
 
         # Skip transforms w/o random method
-        if not hasattr(t, '_methods_with_randomness'):
+        if not hasattr(t, "_methods_with_randomness"):
             return
 
         # Set cache enabled flag
-        setattr(t, '_cache_enabled', True)
+        setattr(t, "_cache_enabled", True)
 
         # Store the original method and init the counter
-        if hasattr(t, '_methods_with_randomness'):
-            setattr(t, 'transform', _add_invoke_checker(t, 'transform'))
-            for name in getattr(t, '_methods_with_randomness'):
+        if hasattr(t, "_methods_with_randomness"):
+            setattr(t, "transform", _add_invoke_checker(t, "transform"))
+            for name in getattr(t, "_methods_with_randomness"):
                 setattr(t, name, _add_invoke_counter(t, name))
 
     def _end_cache(t: BaseTransform):
         # Skip transforms w/o random method
-        if not hasattr(t, '_methods_with_randomness'):
+        if not hasattr(t, "_methods_with_randomness"):
             return
 
         # Remove cache enabled flag
-        delattr(t, '_cache_enabled')
-        if hasattr(t, '_cache'):
-            delattr(t, '_cache')
+        delattr(t, "_cache_enabled")
+        if hasattr(t, "_cache"):
+            delattr(t, "_cache")
 
         # Restore the original method
-        if hasattr(t, '_methods_with_randomness'):
-            for name in getattr(t, '_methods_with_randomness'):
-                key = f'{id(t)}.{name}'
+        if hasattr(t, "_methods_with_randomness"):
+            for name in getattr(t, "_methods_with_randomness"):
+                key = f"{id(t)}.{name}"
                 setattr(t, name, key2method[key])
 
-            key_transform = f'{id(t)}.transform'
-            setattr(t, 'transform', key2method[key_transform])
+            key_transform = f"{id(t)}.transform"
+            setattr(t, "transform", key2method[key_transform])
 
-    def _apply(t: Union[BaseTransform, Iterable],
-               func: Callable[[BaseTransform], None]):
+    def _apply(
+        t: Union[BaseTransform, Iterable], func: Callable[[BaseTransform], None]
+    ):
         if isinstance(t, BaseTransform):
             func(t)
         if isinstance(t, Iterable):

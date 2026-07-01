@@ -8,8 +8,7 @@ from torch.nn.modules.utils import _pair
 
 from ..utils import ext_loader
 
-ext_module = ext_loader.load_ext('_ext',
-                                 ['psamask_forward', 'psamask_backward'])
+ext_module = ext_loader.load_ext("_ext", ["psamask_forward", "psamask_backward"])
 
 
 class PSAMaskFunction(Function):
@@ -17,14 +16,13 @@ class PSAMaskFunction(Function):
     @staticmethod
     def symbolic(g, input, psa_type, mask_size):
         return g.op(
-            'mmcv::MMCVPSAMask',
-            input,
-            psa_type_i=psa_type,
-            mask_size_i=mask_size)
+            "mmcv::MMCVPSAMask", input, psa_type_i=psa_type, mask_size_i=mask_size
+        )
 
     @staticmethod
-    def forward(ctx, input: torch.Tensor, psa_type: str,
-                mask_size: int) -> torch.Tensor:
+    def forward(
+        ctx, input: torch.Tensor, psa_type: str, mask_size: int
+    ) -> torch.Tensor:
         ctx.psa_type = psa_type
         ctx.mask_size = _pair(mask_size)
         ctx.save_for_backward(input)
@@ -33,7 +31,8 @@ class PSAMaskFunction(Function):
         batch_size, channels, h_feature, w_feature = input.size()
         assert channels == h_mask * w_mask
         output = input.new_zeros(
-            (batch_size, h_feature * w_feature, h_feature, w_feature))
+            (batch_size, h_feature * w_feature, h_feature, w_feature)
+        )
 
         ext_module.psamask_forward(
             input,
@@ -45,19 +44,19 @@ class PSAMaskFunction(Function):
             h_mask=h_mask,
             w_mask=w_mask,
             half_h_mask=(h_mask - 1) // 2,
-            half_w_mask=(w_mask - 1) // 2)
+            half_w_mask=(w_mask - 1) // 2,
+        )
         return output
 
     @staticmethod
     def backward(
-            ctx, grad_output: torch.Tensor
+        ctx, grad_output: torch.Tensor
     ) -> Tuple[torch.Tensor, None, None, None]:
         input = ctx.saved_tensors[0]
         psa_type = ctx.psa_type
         h_mask, w_mask = ctx.mask_size
         batch_size, channels, h_feature, w_feature = input.size()
-        grad_input = grad_output.new_zeros(
-            (batch_size, channels, h_feature, w_feature))
+        grad_input = grad_output.new_zeros((batch_size, channels, h_feature, w_feature))
         ext_module.psamask_backward(
             grad_output,
             grad_input,
@@ -68,7 +67,8 @@ class PSAMaskFunction(Function):
             h_mask=h_mask,
             w_mask=w_mask,
             half_h_mask=(h_mask - 1) // 2,
-            half_w_mask=(w_mask - 1) // 2)
+            half_w_mask=(w_mask - 1) // 2,
+        )
         return grad_input, None, None, None
 
 
@@ -79,8 +79,8 @@ class PSAMask(nn.Module):
 
     def __init__(self, psa_type: str, mask_size: Optional[tuple] = None):
         super().__init__()
-        assert psa_type in ['collect', 'distribute']
-        if psa_type == 'collect':
+        assert psa_type in ["collect", "distribute"]
+        if psa_type == "collect":
             psa_type_enum = 0
         else:
             psa_type_enum = 1
@@ -93,6 +93,6 @@ class PSAMask(nn.Module):
 
     def __repr__(self):
         s = self.__class__.__name__
-        s += f'(psa_type={self.psa_type}, '
-        s += f'mask_size={self.mask_size})'
+        s += f"(psa_type={self.psa_type}, "
+        s += f"mask_size={self.mask_size})"
         return s

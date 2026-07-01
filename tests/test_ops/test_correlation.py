@@ -5,12 +5,12 @@ import torch
 from mmcv.ops import Correlation
 from mmcv.utils import IS_CUDA_AVAILABLE, IS_MUSA_AVAILABLE
 
-_input1 = [[[[1., 2., 3.], [0., 1., 2.], [3., 5., 2.]]]]
-_input2 = [[[[1., 2., 3.], [3., 1., 2.], [8., 5., 2.]]]]
+_input1 = [[[[1.0, 2.0, 3.0], [0.0, 1.0, 2.0], [3.0, 5.0, 2.0]]]]
+_input2 = [[[[1.0, 2.0, 3.0], [3.0, 1.0, 2.0], [8.0, 5.0, 2.0]]]]
 
 gt_out_shape = (1, 1, 1, 3, 3)
-_gt_out = [[[[[1., 4., 9.], [0., 1., 4.], [24., 25., 4.]]]]]
-gt_input1_grad = [[[[1., 2., 3.], [3., 1., 2.], [8., 5., 2.]]]]
+_gt_out = [[[[[1.0, 4.0, 9.0], [0.0, 1.0, 4.0], [24.0, 25.0, 4.0]]]]]
+gt_input1_grad = [[[[1.0, 2.0, 3.0], [3.0, 1.0, 2.0], [8.0, 5.0, 2.0]]]]
 
 
 def assert_equal_tensor(tensor_a, tensor_b):
@@ -48,7 +48,8 @@ class TestCorrelation:
 
     @pytest.mark.skipif(
         (not torch.cuda.is_available()) and (not IS_MUSA_AVAILABLE),
-        reason='requires CUDA/MUSA support')
+        reason="requires CUDA/MUSA support",
+    )
     def test_correlation(self):
         self._test_correlation(torch.float)
         if IS_CUDA_AVAILABLE:

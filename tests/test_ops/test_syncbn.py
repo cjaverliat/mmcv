@@ -10,7 +10,7 @@ import torch.nn as nn
 
 from mmcv.utils import IS_CUDA_AVAILABLE, IS_MUSA_AVAILABLE
 
-if platform.system() == 'Windows':
+if platform.system() == "Windows":
     import regex as re
 else:
     import re
@@ -19,44 +19,52 @@ else:
 class TestSyncBN:
 
     def dist_init(self):
-        rank = int(os.environ['SLURM_PROCID'])
-        world_size = int(os.environ['SLURM_NTASKS'])
-        local_rank = int(os.environ['SLURM_LOCALID'])
-        node_list = str(os.environ['SLURM_NODELIST'])
+        rank = int(os.environ["SLURM_PROCID"])
+        world_size = int(os.environ["SLURM_NTASKS"])
+        local_rank = int(os.environ["SLURM_LOCALID"])
+        node_list = str(os.environ["SLURM_NODELIST"])
 
-        node_parts = re.findall('[0-9]+', node_list)
-        os.environ['MASTER_ADDR'] = (f'{node_parts[1]}.{node_parts[2]}' +
-                                     f'.{node_parts[3]}.{node_parts[4]}')
-        os.environ['MASTER_PORT'] = '12341'
-        os.environ['WORLD_SIZE'] = str(world_size)
-        os.environ['RANK'] = str(rank)
+        node_parts = re.findall("[0-9]+", node_list)
+        os.environ["MASTER_ADDR"] = (
+            f"{node_parts[1]}.{node_parts[2]}" + f".{node_parts[3]}.{node_parts[4]}"
+        )
+        os.environ["MASTER_PORT"] = "12341"
+        os.environ["WORLD_SIZE"] = str(world_size)
+        os.environ["RANK"] = str(rank)
 
         if IS_CUDA_AVAILABLE:
-            dist.init_process_group('nccl')
+            dist.init_process_group("nccl")
             torch.cuda.set_device(local_rank)
         elif IS_MUSA_AVAILABLE:
-            dist.init_process_group('mccl')
+            dist.init_process_group("mccl")
             torch.musa.set_device(local_rank)
 
-    @pytest.mark.parametrize('device', [
-        pytest.param(
-            'cuda',
-            marks=pytest.mark.skipif(
-                not IS_CUDA_AVAILABLE, reason='requires CUDA support')),
-        pytest.param(
-            'musa',
-            marks=pytest.mark.skipif(
-                not IS_MUSA_AVAILABLE, reason='requires MUSA support'))
-    ])
-    def _test_syncbn_train(self, size=1, half=False, device='cuda'):
+    @pytest.mark.parametrize(
+        "device",
+        [
+            pytest.param(
+                "cuda",
+                marks=pytest.mark.skipif(
+                    not IS_CUDA_AVAILABLE, reason="requires CUDA support"
+                ),
+            ),
+            pytest.param(
+                "musa",
+                marks=pytest.mark.skipif(
+                    not IS_MUSA_AVAILABLE, reason="requires MUSA support"
+                ),
+            ),
+        ],
+    )
+    def _test_syncbn_train(self, size=1, half=False, device="cuda"):
 
-        if 'SLURM_NTASKS' not in os.environ or int(
-                os.environ['SLURM_NTASKS']) != 4:
-            print('must run with slurm has 4 processes!\n'
-                  'srun -p test --gres=gpu:4 -n4')
+        if "SLURM_NTASKS" not in os.environ or int(os.environ["SLURM_NTASKS"]) != 4:
+            print(
+                "must run with slurm has 4 processes!\n" "srun -p test --gres=gpu:4 -n4"
+            )
             return
         else:
-            print('Running syncbn test')
+            print("Running syncbn test")
         from mmcv.ops import SyncBatchNorm
 
         assert size in (1, 2, 4)
@@ -109,10 +117,10 @@ class TestSyncBN:
         bn.weight.data[2] = 0.7
         bn.train()
 
-        sx = self.x[rank * 4:rank * 4 + 4]
+        sx = self.x[rank * 4 : rank * 4 + 4]
         sx.requires_grad_()
         sy = syncbn(sx)
-        sy.backward(self.y_bp[rank * 4:rank * 4 + 4])
+        sy.backward(self.y_bp[rank * 4 : rank * 4 + 4])
 
         smean = syncbn.running_mean
         svar = syncbn.running_var
@@ -121,11 +129,11 @@ class TestSyncBN:
         sb_grad = syncbn.bias.grad
 
         if size == 1:
-            x = self.x[rank * 4:rank * 4 + 4]
-            y_bp = self.y_bp[rank * 4:rank * 4 + 4]
+            x = self.x[rank * 4 : rank * 4 + 4]
+            y_bp = self.y_bp[rank * 4 : rank * 4 + 4]
         elif size == 2:
-            x = self.x[rank // 2 * 8:rank // 2 * 8 + 8]
-            y_bp = self.y_bp[rank // 2 * 8:rank // 2 * 8 + 8]
+            x = self.x[rank // 2 * 8 : rank // 2 * 8 + 8]
+            y_bp = self.y_bp[rank // 2 * 8 : rank // 2 * 8 + 8]
         elif size == 4:
             x = self.x
             y_bp = self.y_bp
@@ -134,9 +142,9 @@ class TestSyncBN:
         y.backward(y_bp)
 
         if size == 2:
-            y = y[rank % 2 * 4:rank % 2 * 4 + 4]
+            y = y[rank % 2 * 4 : rank % 2 * 4 + 4]
         elif size == 4:
-            y = y[rank * 4:rank * 4 + 4]
+            y = y[rank * 4 : rank * 4 + 4]
 
         mean = bn.running_mean
         var = bn.running_var
@@ -145,45 +153,47 @@ class TestSyncBN:
             w_grad = bn.weight.grad
             b_grad = bn.bias.grad
         elif size == 2:
-            x_grad = x.grad[rank % 2 * 4:rank % 2 * 4 + 4]
+            x_grad = x.grad[rank % 2 * 4 : rank % 2 * 4 + 4]
             w_grad = bn.weight.grad / 2
             b_grad = bn.bias.grad / 2
         elif size == 4:
-            x_grad = x.grad[rank * 4:rank * 4 + 4]
+            x_grad = x.grad[rank * 4 : rank * 4 + 4]
             w_grad = bn.weight.grad / 4
             b_grad = bn.bias.grad / 4
 
-        assert np.allclose(mean.data.cpu().numpy(),
-                           smean.data.cpu().numpy(), 1e-3)
-        assert np.allclose(var.data.cpu().numpy(),
-                           svar.data.cpu().numpy(), 1e-3)
+        assert np.allclose(mean.data.cpu().numpy(), smean.data.cpu().numpy(), 1e-3)
+        assert np.allclose(var.data.cpu().numpy(), svar.data.cpu().numpy(), 1e-3)
         assert np.allclose(y.data.cpu().numpy(), sy.data.cpu().numpy(), 1e-3)
-        assert np.allclose(w_grad.data.cpu().numpy(),
-                           sw_grad.data.cpu().numpy(), 1e-3)
-        assert np.allclose(b_grad.data.cpu().numpy(),
-                           sb_grad.data.cpu().numpy(), 1e-3)
-        assert np.allclose(x_grad.data.cpu().numpy(),
-                           sx_grad.data.cpu().numpy(), 1e-2)
+        assert np.allclose(w_grad.data.cpu().numpy(), sw_grad.data.cpu().numpy(), 1e-3)
+        assert np.allclose(b_grad.data.cpu().numpy(), sb_grad.data.cpu().numpy(), 1e-3)
+        assert np.allclose(x_grad.data.cpu().numpy(), sx_grad.data.cpu().numpy(), 1e-2)
 
-    @pytest.mark.parametrize('device', [
-        pytest.param(
-            'cuda',
-            marks=pytest.mark.skipif(
-                not IS_CUDA_AVAILABLE, reason='requires CUDA support')),
-        pytest.param(
-            'musa',
-            marks=pytest.mark.skipif(
-                not IS_MUSA_AVAILABLE, reason='requires MUSA support'))
-    ])
-    def _test_syncbn_empty_train(self, size=1, half=False, device='cuda'):
+    @pytest.mark.parametrize(
+        "device",
+        [
+            pytest.param(
+                "cuda",
+                marks=pytest.mark.skipif(
+                    not IS_CUDA_AVAILABLE, reason="requires CUDA support"
+                ),
+            ),
+            pytest.param(
+                "musa",
+                marks=pytest.mark.skipif(
+                    not IS_MUSA_AVAILABLE, reason="requires MUSA support"
+                ),
+            ),
+        ],
+    )
+    def _test_syncbn_empty_train(self, size=1, half=False, device="cuda"):
 
-        if 'SLURM_NTASKS' not in os.environ or int(
-                os.environ['SLURM_NTASKS']) != 4:
-            print('must run with slurm has 4 processes!\n'
-                  'srun -p test --gres=gpu:4 -n4')
+        if "SLURM_NTASKS" not in os.environ or int(os.environ["SLURM_NTASKS"]) != 4:
+            print(
+                "must run with slurm has 4 processes!\n" "srun -p test --gres=gpu:4 -n4"
+            )
             return
         else:
-            print('Running syncbn test')
+            print("Running syncbn test")
         from mmcv.ops import SyncBatchNorm
 
         assert size in (1, 2, 4)
@@ -225,7 +235,7 @@ class TestSyncBN:
         elif size == 4:
             group = dist.group.WORLD
 
-        syncbn = SyncBatchNorm(3, group=group, stats_mode='N').to(device)
+        syncbn = SyncBatchNorm(3, group=group, stats_mode="N").to(device)
         syncbn.weight.data[0] = 0.2
         syncbn.weight.data[1] = 0.5
         syncbn.weight.data[2] = 0.7
@@ -237,10 +247,10 @@ class TestSyncBN:
         bn.weight.data[2] = 0.7
         bn.train()
 
-        sx = self.x[rank * 4:rank * 4 + 4]
+        sx = self.x[rank * 4 : rank * 4 + 4]
         sx.requires_grad_()
         sy = syncbn(sx)
-        sy.backward(self.y_bp[rank * 4:rank * 4 + 4])
+        sy.backward(self.y_bp[rank * 4 : rank * 4 + 4])
         smean = syncbn.running_mean
         svar = syncbn.running_var
         sx_grad = sx.grad
@@ -248,11 +258,11 @@ class TestSyncBN:
         sb_grad = syncbn.bias.grad
 
         if size == 1:
-            x = self.x[rank * 4:rank * 4 + 4]
-            y_bp = self.y_bp[rank * 4:rank * 4 + 4]
+            x = self.x[rank * 4 : rank * 4 + 4]
+            y_bp = self.y_bp[rank * 4 : rank * 4 + 4]
         elif size == 2:
-            x = self.x[rank // 2 * 8:rank // 2 * 8 + 8]
-            y_bp = self.y_bp[rank // 2 * 8:rank // 2 * 8 + 8]
+            x = self.x[rank // 2 * 8 : rank // 2 * 8 + 8]
+            y_bp = self.y_bp[rank // 2 * 8 : rank // 2 * 8 + 8]
         elif size == 4:
             x = self.x
             y_bp = self.y_bp
@@ -261,9 +271,9 @@ class TestSyncBN:
         y.backward(y_bp)
 
         if size == 2:
-            y = y[rank % 2 * 4:rank % 2 * 4 + 4]
+            y = y[rank % 2 * 4 : rank % 2 * 4 + 4]
         elif size == 4:
-            y = y[rank * 4:rank * 4 + 4]
+            y = y[rank * 4 : rank * 4 + 4]
 
         mean = bn.running_mean
         var = bn.running_var
@@ -272,29 +282,24 @@ class TestSyncBN:
             w_grad = bn.weight.grad
             b_grad = bn.bias.grad
         elif size == 2:
-            x_grad = x.grad[rank % 2 * 4:rank % 2 * 4 + 4]
+            x_grad = x.grad[rank % 2 * 4 : rank % 2 * 4 + 4]
             w_grad = bn.weight.grad / 2
             b_grad = bn.bias.grad / 2
         elif size == 4:
-            x_grad = x.grad[rank * 4:rank * 4 + 4]
+            x_grad = x.grad[rank * 4 : rank * 4 + 4]
             w_grad = bn.weight.grad / 4
             b_grad = bn.bias.grad / 4
 
-        assert np.allclose(mean.data.cpu().numpy(),
-                           smean.data.cpu().numpy(), 1e-3)
-        assert np.allclose(var.data.cpu().numpy(),
-                           svar.data.cpu().numpy(), 1e-3)
+        assert np.allclose(mean.data.cpu().numpy(), smean.data.cpu().numpy(), 1e-3)
+        assert np.allclose(var.data.cpu().numpy(), svar.data.cpu().numpy(), 1e-3)
         assert np.allclose(y.data.cpu().numpy(), sy.data.cpu().numpy(), 1e-3)
-        assert np.allclose(w_grad.data.cpu().numpy(),
-                           sw_grad.data.cpu().numpy(), 1e-3)
-        assert np.allclose(b_grad.data.cpu().numpy(),
-                           sb_grad.data.cpu().numpy(), 1e-3)
-        assert np.allclose(x_grad.data.cpu().numpy(),
-                           sx_grad.data.cpu().numpy(), 1e-2)
+        assert np.allclose(w_grad.data.cpu().numpy(), sw_grad.data.cpu().numpy(), 1e-3)
+        assert np.allclose(b_grad.data.cpu().numpy(), sb_grad.data.cpu().numpy(), 1e-3)
+        assert np.allclose(x_grad.data.cpu().numpy(), sx_grad.data.cpu().numpy(), 1e-2)
 
         # 'stats_mode' only allows 'default' and 'N'
         with pytest.raises(AssertionError):
-            SyncBatchNorm(3, group=group, stats_mode='X')
+            SyncBatchNorm(3, group=group, stats_mode="X")
 
     def test_syncbn_1(self):
         self._test_syncbn_train(size=1)

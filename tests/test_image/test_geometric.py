@@ -2,11 +2,12 @@
 import os.path as osp
 
 import cv2
-import mmcv
 import numpy as np
 import pytest
 import torch
 from numpy.testing import assert_array_equal
+
+import mmcv
 
 
 class TestGeometric:
@@ -166,7 +167,6 @@ class TestGeometric:
         with pytest.raises(TypeError):
             mmcv.imrescale(self.img, [100, 100])
 
-
     def test_imflip(self):
         # direction must be "horizontal" or "vertical" or "diagonal"
         with pytest.raises(AssertionError):
@@ -220,7 +220,7 @@ class TestGeometric:
         for i in range(h):
             for j in range(w):
                 assert flipped_img[i, j] == img[h - 1 - i, w - 1 - j]
-                
+
     def test_imflip_(self):
         # direction must be "horizontal" or "vertical" or "diagonal"
         with pytest.raises(AssertionError):
@@ -625,6 +625,7 @@ class TestGeometric:
         with pytest.raises(AssertionError):
             mmcv.imtranslate(img, 1, "diagonal")
 
+
 class TestGeometricTorch:
     @classmethod
     def setup_class(cls):
@@ -641,7 +642,9 @@ class TestGeometricTorch:
         resized_img_dst = torch.empty((600, 1000, 3), dtype=self.img_pt.dtype)
         resized_img = mmcv.imresize(self.img_pt, (1000, 600), out=resized_img_dst)
         assert id(resized_img_dst) == id(resized_img)
-        torch.testing.assert_close(resized_img_dst, mmcv.imresize(self.img_pt, (1000, 600)))
+        torch.testing.assert_close(
+            resized_img_dst, mmcv.imresize(self.img_pt, (1000, 600))
+        )
 
         for mode in ["nearest", "bilinear", "bicubic", "area", "lanczos"]:
             resized_img = mmcv.imresize(self.img_pt, (1000, 600), interpolation=mode)
@@ -767,22 +770,30 @@ class TestGeometricTorch:
         for i in range(len(patches)):
             ref_patch = torch.from_numpy(np.load(patch_path + f"/pad0_{i}.npy"))
             torch.testing.assert_close(patches[i], ref_patch)
-        
+
     def test_impad_pt(self):
         # grayscale image
         img_pt = torch.rand((10, 10), dtype=torch.float32)
         # left, top, right and bottom
         padded_img = mmcv.impad(img_pt, padding=(0, 0, 2, 5), pad_val=0)
         torch.testing.assert_close(img_pt, padded_img[:10, :10])
-        torch.testing.assert_close(torch.zeros((5, 12), dtype=torch.float32), padded_img[10:, :])
-        torch.testing.assert_close(torch.zeros((15, 2), dtype=torch.float32), padded_img[:, 10:])
+        torch.testing.assert_close(
+            torch.zeros((5, 12), dtype=torch.float32), padded_img[10:, :]
+        )
+        torch.testing.assert_close(
+            torch.zeros((15, 2), dtype=torch.float32), padded_img[:, 10:]
+        )
 
         # RGB image
         img_pt = torch.rand((10, 10, 3), dtype=torch.float32)
         padded_img = mmcv.impad(img_pt, padding=(0, 0, 2, 5), pad_val=0)
         torch.testing.assert_close(img_pt, padded_img[:10, :10, :])
-        torch.testing.assert_close(torch.zeros((5, 12, 3), dtype=torch.float32), padded_img[10:, :, :])
-        torch.testing.assert_close(torch.zeros((15, 2, 3), dtype=torch.float32), padded_img[:, 10:, :])
+        torch.testing.assert_close(
+            torch.zeros((5, 12, 3), dtype=torch.float32), padded_img[10:, :, :]
+        )
+        torch.testing.assert_close(
+            torch.zeros((15, 2, 3), dtype=torch.float32), padded_img[:, 10:, :]
+        )
 
         # RGB image with different values for three channels.
         img_pt = torch.randint(256, size=(10, 10, 3), dtype=torch.uint8)
@@ -803,15 +814,23 @@ class TestGeometricTorch:
         img_pt = torch.rand((10, 10), dtype=torch.float32)
         padded_img = mmcv.impad(img_pt, shape=(15, 12))
         torch.testing.assert_close(img_pt, padded_img[:10, :10])
-        torch.testing.assert_close(torch.zeros((5, 12), dtype=torch.float32), padded_img[10:, :])
-        torch.testing.assert_close(torch.zeros((15, 2), dtype=torch.float32), padded_img[:, 10:])
+        torch.testing.assert_close(
+            torch.zeros((5, 12), dtype=torch.float32), padded_img[10:, :]
+        )
+        torch.testing.assert_close(
+            torch.zeros((15, 2), dtype=torch.float32), padded_img[:, 10:]
+        )
 
         # Pad the RGB image to shape (15, 12)
         img_pt = torch.rand((10, 10, 3), dtype=torch.float32)
         padded_img = mmcv.impad(img_pt, shape=(15, 12))
         torch.testing.assert_close(img_pt, padded_img[:10, :10, :])
-        torch.testing.assert_close(torch.zeros((5, 12, 3), dtype=torch.float32), padded_img[10:, :, :])
-        torch.testing.assert_close(torch.zeros((15, 2, 3), dtype=torch.float32), padded_img[:, 10:, :])
+        torch.testing.assert_close(
+            torch.zeros((5, 12, 3), dtype=torch.float32), padded_img[10:, :, :]
+        )
+        torch.testing.assert_close(
+            torch.zeros((15, 2, 3), dtype=torch.float32), padded_img[:, 10:, :]
+        )
 
         # Pad the RGB image to shape (15, 12) with different values for
         # three channels.
@@ -835,9 +854,15 @@ class TestGeometricTorch:
 
         assert padded_img.shape == (14, 20, 3)
         torch.testing.assert_close(img_pt, padded_img[2:12, 5:15, :])
-        torch.testing.assert_close(torch.zeros((2, 5, 3), dtype=torch.float32), padded_img[:2, :5, :])
-        torch.testing.assert_close(torch.zeros((2, 5, 3), dtype=torch.float32), padded_img[12:, :5, :])
-        torch.testing.assert_close(torch.zeros((2, 5, 3), dtype=torch.float32), padded_img[:2, 15:, :])
+        torch.testing.assert_close(
+            torch.zeros((2, 5, 3), dtype=torch.float32), padded_img[:2, :5, :]
+        )
+        torch.testing.assert_close(
+            torch.zeros((2, 5, 3), dtype=torch.float32), padded_img[12:, :5, :]
+        )
+        torch.testing.assert_close(
+            torch.zeros((2, 5, 3), dtype=torch.float32), padded_img[:2, 15:, :]
+        )
         torch.testing.assert_close(
             torch.zeros((2, 5, 3), dtype=torch.float32), padded_img[12:, 15:, :]
         )
@@ -850,23 +875,29 @@ class TestGeometricTorch:
         assert padded_img.shape == (12, 15, 3)
         torch.testing.assert_close(img_pt, padded_img[:10, :10, :])
         torch.testing.assert_close(
-            pad_val[0] * torch.ones((2, 15, 1), dtype=torch.float32), padded_img[10:, :, 0:1]
+            pad_val[0] * torch.ones((2, 15, 1), dtype=torch.float32),
+            padded_img[10:, :, 0:1],
         )
         torch.testing.assert_close(
-            pad_val[1] * torch.ones((2, 15, 1), dtype=torch.float32), padded_img[10:, :, 1:2]
+            pad_val[1] * torch.ones((2, 15, 1), dtype=torch.float32),
+            padded_img[10:, :, 1:2],
         )
         torch.testing.assert_close(
-            pad_val[2] * torch.ones((2, 15, 1), dtype=torch.float32), padded_img[10:, :, 2:3]
+            pad_val[2] * torch.ones((2, 15, 1), dtype=torch.float32),
+            padded_img[10:, :, 2:3],
         )
 
         torch.testing.assert_close(
-            pad_val[0] * torch.ones((12, 5, 1), dtype=torch.float32), padded_img[:, 10:, 0:1]
+            pad_val[0] * torch.ones((12, 5, 1), dtype=torch.float32),
+            padded_img[:, 10:, 0:1],
         )
         torch.testing.assert_close(
-            pad_val[1] * torch.ones((12, 5, 1), dtype=torch.float32), padded_img[:, 10:, 1:2]
+            pad_val[1] * torch.ones((12, 5, 1), dtype=torch.float32),
+            padded_img[:, 10:, 1:2],
         )
         torch.testing.assert_close(
-            pad_val[2] * torch.ones((12, 5, 1), dtype=torch.float32), padded_img[:, 10:, 2:3]
+            pad_val[2] * torch.ones((12, 5, 1), dtype=torch.float32),
+            padded_img[:, 10:, 2:3],
         )
 
         # test different padding mode with channel number = 3
@@ -938,7 +969,9 @@ class TestGeometricTorch:
         np.random.seed(0)
         img_cutout = torch.tensor([[1, 2, 3], [0, 0, 6], [7, 8, 9]], dtype=torch.uint8)
         torch.testing.assert_close(mmcv.cutout(img_pt, (1, 2)), img_cutout)
-        img_cutout = torch.tensor([[1, 2, 3], [10, 10, 6], [7, 8, 9]], dtype=torch.uint8)
+        img_cutout = torch.tensor(
+            [[1, 2, 3], [10, 10, 6], [7, 8, 9]], dtype=torch.uint8
+        )
         torch.testing.assert_close(mmcv.cutout(img_pt, (1, 2), pad_val=10), img_cutout)
 
     def test_imrotate_pt(self):
@@ -959,7 +992,9 @@ class TestGeometricTorch:
         img_r = torch.tensor([[5, 1], [6, 2], [7, 3], [8, 4]], dtype=torch.uint8)
         torch.testing.assert_close(mmcv.imrotate(img_pt, 90, auto_bound=True), img_r)
         img_r = torch.tensor([[6, 6, 2, 2], [7, 7, 3, 3]], dtype=torch.uint8)
-        torch.testing.assert_close(mmcv.imrotate(img_pt, 90, border_mode="replicate"), img_r)
+        torch.testing.assert_close(
+            mmcv.imrotate(img_pt, 90, border_mode="replicate"), img_r
+        )
 
         with pytest.raises(ValueError):
             mmcv.imrotate(img_pt, 90, center=(0, 0), auto_bound=True)
@@ -979,14 +1014,20 @@ class TestGeometricTorch:
             [[1, borderValue, borderValue], [4, 2, borderValue], [7, 5, 3]],
             dtype=torch.uint8,
         )
-        torch.testing.assert_close(mmcv.imshear(img_pt, 1, "vertical", borderValue), img_sheared)
+        torch.testing.assert_close(
+            mmcv.imshear(img_pt, 1, "vertical", borderValue), img_sheared
+        )
         # magnitude=1, vertical, borderValue=100, img shape (h,w,3)
         img_pt = torch.stack([img_pt, img_pt, img_pt], dim=-1)
         img_sheared = torch.stack([img_sheared, img_sheared, img_sheared], dim=-1)
-        torch.testing.assert_close(mmcv.imshear(img_pt, 1, "vertical", borderValue), img_sheared)
+        torch.testing.assert_close(
+            mmcv.imshear(img_pt, 1, "vertical", borderValue), img_sheared
+        )
         # test tuple format of borderValue
         torch.testing.assert_close(
-            mmcv.imshear(img_pt, 1, "vertical", (borderValue, borderValue, borderValue)),
+            mmcv.imshear(
+                img_pt, 1, "vertical", (borderValue, borderValue, borderValue)
+            ),
             img_sheared,
         )
 
@@ -1001,18 +1042,28 @@ class TestGeometricTorch:
         img_translated = torch.tensor(
             [[128, 1, 2], [128, 4, 5], [128, 7, 8]], dtype=torch.uint8
         )
-        torch.testing.assert_close(mmcv.imtranslate(img_pt, 1, border_value=128), img_translated)
+        torch.testing.assert_close(
+            mmcv.imtranslate(img_pt, 1, border_value=128), img_translated
+        )
         # offset=-1, vertical
-        img_translated = torch.tensor([[4, 5, 6], [7, 8, 9], [0, 0, 0]], dtype=torch.uint8)
-        torch.testing.assert_close(mmcv.imtranslate(img_pt, -1, "vertical"), img_translated)
+        img_translated = torch.tensor(
+            [[4, 5, 6], [7, 8, 9], [0, 0, 0]], dtype=torch.uint8
+        )
+        torch.testing.assert_close(
+            mmcv.imtranslate(img_pt, -1, "vertical"), img_translated
+        )
         # offset=-2, horizontal
         img_pt = torch.tensor([[1, 2, 3, 4], [5, 6, 7, 8]], dtype=torch.uint8)
         img_pt = torch.stack([img_pt, img_pt, img_pt], dim=-1)
-        img_translated = torch.tensor([[3, 4, 128, 128], [7, 8, 128, 128]], dtype=torch.uint8)
+        img_translated = torch.tensor(
+            [[3, 4, 128, 128], [7, 8, 128, 128]], dtype=torch.uint8
+        )
         img_translated = torch.stack(
             [img_translated, img_translated, img_translated], dim=-1
         )
-        torch.testing.assert_close(mmcv.imtranslate(img_pt, -2, border_value=128), img_translated)
+        torch.testing.assert_close(
+            mmcv.imtranslate(img_pt, -2, border_value=128), img_translated
+        )
         # offset=2, vertical
         border_value = (110, 120, 130)
         img_translated = torch.stack(
@@ -1029,6 +1080,7 @@ class TestGeometricTorch:
         # test invalid value of direction
         with pytest.raises(AssertionError):
             mmcv.imtranslate(img_pt, 1, "diagonal")
+
 
 if __name__ == "__main__":
     pytest.main([__file__])

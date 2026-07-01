@@ -15,7 +15,7 @@ class TestCond2d:
         cls.input = torch.randn((1, 3, 32, 32), requires_grad=True)
         cls.weight = nn.Parameter(torch.randn(1, 3, 3, 3))
 
-    @pytest.mark.skipif(not torch.cuda.is_available(), reason='requires cuda')
+    @pytest.mark.skipif(not torch.cuda.is_available(), reason="requires cuda")
     def test_conv2d_cuda(self):
         x = self.input.cuda()
         weight = self.weight.cuda()
@@ -24,7 +24,7 @@ class TestCond2d:
         gradcheck(conv2d, (x, weight, None, 1, 1), eps=1e-2, atol=0.1)
         gradgradcheck(conv2d, (x, weight, None, 1, 1), eps=1e-2, atol=0.1)
 
-    @pytest.mark.skipif(not IS_MUSA_AVAILABLE, reason='requires musa')
+    @pytest.mark.skipif(not IS_MUSA_AVAILABLE, reason="requires musa")
     def test_conv2d_musa(self):
         x = self.input.musa()
         weight = self.weight.musa()
@@ -41,24 +41,20 @@ class TestCond2dTansposed:
         cls.input = torch.randn((1, 3, 32, 32), requires_grad=True)
         cls.weight = nn.Parameter(torch.randn(3, 1, 3, 3))
 
-    @pytest.mark.skipif(not torch.cuda.is_available(), reason='requires cuda')
+    @pytest.mark.skipif(not torch.cuda.is_available(), reason="requires cuda")
     def test_conv2d_transposed_cuda(self):
         x = self.input.cuda()
         weight = self.weight.cuda()
         res = conv_transpose2d(x, weight, None, 1, 1)
         assert res.shape == (1, 1, 32, 32)
-        gradcheck(
-            conv_transpose2d, (x, weight, None, 1, 1), eps=1e-2, atol=1e-2)
-        gradgradcheck(
-            conv_transpose2d, (x, weight, None, 1, 1), eps=1e-2, atol=1e-2)
+        gradcheck(conv_transpose2d, (x, weight, None, 1, 1), eps=1e-2, atol=1e-2)
+        gradgradcheck(conv_transpose2d, (x, weight, None, 1, 1), eps=1e-2, atol=1e-2)
 
-    @pytest.mark.skipif(not IS_MUSA_AVAILABLE, reason='requires musa')
+    @pytest.mark.skipif(not IS_MUSA_AVAILABLE, reason="requires musa")
     def test_conv2d_transposed_musa(self):
         x = self.input.musa()
         weight = self.weight.musa()
         res = conv_transpose2d(x, weight, None, 1, 1)
         assert res.shape == (1, 1, 32, 32)
-        gradcheck(
-            conv_transpose2d, (x, weight, None, 1, 1), eps=1e-2, atol=1e-2)
-        gradgradcheck(
-            conv_transpose2d, (x, weight, None, 1, 1), eps=1e-2, atol=1e-2)
+        gradcheck(conv_transpose2d, (x, weight, None, 1, 1), eps=1e-2, atol=1e-2)
+        gradgradcheck(conv_transpose2d, (x, weight, None, 1, 1), eps=1e-2, atol=1e-2)
