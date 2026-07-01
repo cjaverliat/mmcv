@@ -43,7 +43,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        # windows-2022 (VS2022) not windows-latest: newer runner images ship
+        # VS2026/MSVC 14.5x which CUDA nvcc rejects (host_config.h C1189,
+        # "only 2017..2022 supported").
+        os: [ubuntu-latest, windows-2022]
         python-version: ['3.10', '3.11', '3.12']
         torch: ['2.6.0', '2.7.0', '2.8.0', '2.9.0']
         # torch is in the base matrix so each include pairs (adds cuda/cuda_tag)
