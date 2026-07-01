@@ -64,15 +64,6 @@ jobs:
           - torch: '2.9.0'
             cuda: '12.8'
             cuda_tag: cu128
-        exclude:
-          # torch >2.8 on Windows + CUDA fails to compile extensions: MSVC's
-          # <valarray> (pulled in via thrust) collides with ::std::string in
-          # torch/csrc/dynamo/compiled_autograd.h (C2872 'std' ambiguous). This
-          # is an unresolved upstream bug (pytorch/pytorch#173232, #166123) with
-          # no compiler-flag fix; torch 2.9 Windows CUDA wheels wait for a torch
-          # patch. Linux CUDA and all CPU (incl. Windows) torch 2.9 still build.
-          - os: windows-2022
-            torch: '2.9.0'
     env:
       FORCE_CUDA: '1'
     steps:

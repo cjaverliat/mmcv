@@ -22,7 +22,10 @@
 
 #include "pytorch_cuda_helper.hpp"
 #endif
-#include <torch/script.h>
+// <torch/types.h> not <torch/script.h>: script.h pulls torch JIT/dynamo
+// (compiled_autograd.h), which breaks nvcc/MSVC on torch>2.8 (pytorch#173232).
+// Only ATen tensor ops (torch:: == at::) are used here.
+#include <torch/types.h>
 #include <utils/spconv/tensorview/tensorview.h>
 
 namespace tv {
