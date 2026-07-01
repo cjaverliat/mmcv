@@ -1,0 +1,222 @@
+name: build wheels
+
+# Build mmcv wheels across recent CUDA + torch on Linux/Windows/macOS and, on a
+# version tag, publish them to the GitHub Release. setup.py names each wheel with
+# a +cuXXXtorchYY local label; at install time it downloads the matching prebuilt
+# wheel from that release (flash-attn style) or falls back to building.
+#
+# CUDA builds get their toolchain from conda-forge (cuda-nvcc pinned to the same
+# CUDA the matrix torch was built against) and cross-compile with nvcc, so no GPU
+# and no system CUDA install are needed. This mirrors the reliable conda-based
+# approach used by https://github.com/cjaverliat/sam2.
+#
+# Windows note: builds run in pwsh, NOT Git bash. Git bash's login profile
+# prepends /usr/bin, whose coreutils `link.exe` shadows MSVC's linker and breaks
+# the extension link step ("/usr/bin/link: extra operand '/LTCG'").
+
+on:
+  release:
+    types: [published]
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Compile the ops (never try to download a prebuilt wheel while producing one).
+  MMCV_FORCE_BUILD: '1'
+  MMCV_WITH_OPS: '1'
+  # SM 7.5 (Turing) .. 9.0 (Hopper) + PTX for forward compat.
+  TORCH_CUDA_ARCH_LIST: '7.5 8.0 8.6 8.9 9.0+PTX'
+  # ilammy/msvc-dev-cmd activates the VC env; torch's cpp_extension._check_abi
+  # then requires DISTUTILS_USE_SDK=1 or it aborts the build. No-op on Linux/mac.
+  DISTUTILS_USE_SDK: '1'
+
+jobs:
+  build_cuda:
+    name: cuda ${{ matrix.cuda_tag }} torch ${{ matrix.torch }} py${{ matrix.python-version }} ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # windows-2022 (VS2022) not windows-latest: newer runner images ship
+        # VS2026/MSVC 14.5x which CUDA nvcc rejects (host_config.h C1189,
+        # "only 2017..2022 supported").
+        os: [ubuntu-latest, windows-2022]
+        python-version: ['3.10', '3.11', '3.12']
+        torch: ['2.6.0', '2.7.0', '2.8.0', '2.9.0']
+        # torch is in the base matrix so each include pairs (adds cuda/cuda_tag)
+        # onto the matching combinations instead of creating standalone jobs.
+        include:
+          - torch: '2.6.0'
+            cuda: '12.4'
+            cuda_tag: cu124
+          - torch: '2.7.0'
+            cuda: '12.6'
+            cuda_tag: cu126
+          - torch: '2.8.0'
+            cuda: '12.8'
+            cuda_tag: cu128
+          - torch: '2.9.0'
+            cuda: '12.8'
+            cuda_tag: cu128
+        exclude:
+          # torch >2.8 on Windows + CUDA fails to compile extensions: MSVC's
+          # <valarray> (pulled in via thrust) collides with ::std::string in
+          # torch/csrc/dynamo/compiled_autograd.h (C2872 'std' ambiguous). This
+          # is an unresolved upstream bug (pytorch/pytorch#173232, #166123) with
+          # no compiler-flag fix; torch 2.9 Windows CUDA wheels wait for a torch
+          # patch. Linux CUDA and all CPU (incl. Windows) torch 2.9 still build.
+          - os: windows-2022
+            torch: '2.9.0'
+    env:
+      FORCE_CUDA: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk space (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android \
+            /usr/local/share/boost "$AGENT_TOOLSDIRECTORY" || true
+          df -h
+
+      # nvcc's only supported host compiler on win-64 is MSVC's cl.exe. No-op on
+      # Linux (conda-forge ships gxx as the host compiler there).
+      - name: Set up MSVC (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      # conda-forge supplies nvcc + CUDA dev libs pinned to matrix.cuda, matching
+      # the CUDA the matrix torch was built against. cccl = thrust/cub headers a
+      # few mmcv ops need.
+      - name: Set up CUDA toolchain (conda-forge)
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-name: build
+          condarc: |
+            channels:
+              - conda-forge
+          create-args: >-
+            python=${{ matrix.python-version }}
+            cuda-version=${{ matrix.cuda }}
+            cuda-nvcc=${{ matrix.cuda }}
+            cuda-cudart-dev=${{ matrix.cuda }}
+            cuda-cccl=${{ matrix.cuda }}
+            libcublas-dev
+            libcusparse-dev
+            libcusolver-dev
+            ninja
+
+      # ---- Linux: micromamba login bash activates the env ----
+      - name: Install PyTorch + build deps (Linux)
+        if: runner.os == 'Linux'
+        shell: bash -el {0}
+        run: |
+          python -m pip install --upgrade pip
+          pip install wheel setuptools psutil numpy
+          pip install torch==${{ matrix.torch }} \
+            --index-url https://download.pytorch.org/whl/${{ matrix.cuda_tag }} \
+            --no-cache-dir
+
+      - name: Build wheel (Linux)
+        if: runner.os == 'Linux'
+        shell: bash -el {0}
+        run: |
+          export CUDA_HOME="$CONDA_PREFIX"
+          nvcc --version
+          python setup.py bdist_wheel
+          ls -la dist/
+
+      # ---- Windows: pwsh + `micromamba run` (avoids Git bash's link.exe) ----
+      - name: Install PyTorch + build deps (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          micromamba run -n build python -m pip install --upgrade pip
+          micromamba run -n build pip install wheel setuptools psutil numpy
+          micromamba run -n build pip install torch==${{ matrix.torch }} --index-url https://download.pytorch.org/whl/${{ matrix.cuda_tag }} --no-cache-dir
+
+      - name: Build wheel (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # Deterministic env prefix (capturing CONDA_PREFIX via stdout is
+          # polluted by Windows conda-activation batch echo). On win-64 the CUDA
+          # toolkit lives under the env's Library dir.
+          $env:CUDA_HOME = "$env:MAMBA_ROOT_PREFIX\envs\build\Library"
+          Write-Host "CUDA_HOME=$env:CUDA_HOME"
+          micromamba run -n build nvcc --version
+          micromamba run -n build python setup.py bdist_wheel
+          Get-ChildItem dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mmcv-${{ matrix.cuda_tag }}-torch${{ matrix.torch }}-py${{ matrix.python-version }}-${{ matrix.os }}
+          path: dist/*.whl
+
+  build_cpu:
+    name: cpu torch ${{ matrix.torch }} py${{ matrix.python-version }} ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # windows-2022 for a stable MSVC; macos-14 is arm64 (MPS-capable torch).
+        os: [ubuntu-latest, windows-2022, macos-14]
+        python-version: ['3.10', '3.11', '3.12']
+        torch: ['2.6.0', '2.7.0', '2.8.0', '2.9.0']
+    env:
+      # macOS arm64 deployment target must match setup.py's reconstructed
+      # platform tag (macosx_11_0_arm64).
+      MACOSX_DEPLOYMENT_TARGET: '11.0'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Set up MSVC (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      # No `shell:` override -> per-OS default (pwsh on Windows, bash elsewhere).
+      # pwsh keeps MSVC's link.exe ahead of Git bash's coreutils link. Commands
+      # are one-per-line so they parse in both pwsh and bash.
+      - name: Install PyTorch (cpu) + build deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install wheel setuptools psutil numpy
+          pip install torch==${{ matrix.torch }} --index-url https://download.pytorch.org/whl/cpu --no-cache-dir
+
+      - name: Build wheel
+        # macOS arm64 torch is MPS-capable -> setup.py compiles the MPS/CPU ops.
+        run: python setup.py bdist_wheel
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mmcv-cpu-torch${{ matrix.torch }}-py${{ matrix.python-version }}-${{ matrix.os }}
+          path: dist/*.whl
+
+  # Attach every built wheel to the GitHub Release for the pushed tag, where
+  # setup.py's flash-attn-style downloader looks for them.
+  release:
+    needs: [build_cuda, build_cpu]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: wheels
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: wheels/*.whl
