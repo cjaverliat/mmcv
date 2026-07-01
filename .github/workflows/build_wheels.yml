@@ -11,6 +11,10 @@ on:
   push:
     tags:
       - 'v*'
+    branches:
+      # TEMPORARY: smoke-test the build on develop before merging to main.
+      # Remove this branch trigger before merge (main only needs tags/dispatch).
+      - develop
   workflow_dispatch:
   # Manual smoke-build of a single config without a release:
   #   Actions -> build wheels -> Run workflow
