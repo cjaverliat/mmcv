@@ -39,6 +39,9 @@ jobs:
       matrix:
         os: [ubuntu-22.04, windows-2022]
         python-version: ['3.10', '3.11', '3.12']
+        torch: ['2.6.0', '2.7.0', '2.8.0', '2.9.0']
+        # torch is in the base matrix so each include pairs (adds cuda/cuda_tag)
+        # onto the matching combinations instead of creating standalone jobs.
         include:
           - torch: '2.6.0'
             cuda: '12.4.0'
