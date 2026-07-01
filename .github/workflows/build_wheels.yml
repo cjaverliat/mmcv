@@ -124,16 +124,14 @@ jobs:
           python setup.py bdist_wheel
           ls -la dist/
 
-      - name: Verify wheel (Linux)
+      - name: Verify extension built (Linux)
         if: runner.os == 'Linux'
         shell: bash -el {0}
-        run: |
-          pip install dist/*.whl
-          # Run from outside the repo so `mmcv` imports the installed wheel, not
-          # the source tree (which has no compiled _ext). No GPU on the runner:
-          # check_installation.py exercises the CPU op and skips the CUDA op.
-          cd "$RUNNER_TEMP"
-          python "$GITHUB_WORKSPACE/.dev_scripts/check_installation.py"
+        # Static check: assert the compiled mmcv/_ext.(so|pyd) is inside the
+        # wheel. Confirms the CUDA/CPU extension actually compiled and got
+        # packaged (not an extension-less fallback) without importing it — the
+        # runner has no GPU, so we never load/run the binary.
+        run: python .github/scripts/check_wheel_ext.py dist
 
       # ---- Windows: pwsh + `micromamba run` (avoids Git bash's link.exe) ----
       - name: Install PyTorch + build deps (Windows)
@@ -157,15 +155,10 @@ jobs:
           micromamba run -n build python setup.py bdist_wheel
           Get-ChildItem dist
 
-      - name: Verify wheel (Windows)
+      - name: Verify extension built (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: |
-          $whl = (Get-ChildItem "$env:GITHUB_WORKSPACE\dist\*.whl")[0].FullName
-          micromamba run -n build pip install $whl
-          # Run outside the repo so `mmcv` resolves to the installed wheel.
-          cd $env:RUNNER_TEMP
-          micromamba run -n build python "$env:GITHUB_WORKSPACE\.dev_scripts\check_installation.py"
+        run: micromamba run -n build python .github/scripts/check_wheel_ext.py dist
 
       - uses: actions/upload-artifact@v4
         with:
@@ -211,23 +204,11 @@ jobs:
         # macOS arm64 torch is MPS-capable -> setup.py compiles the MPS/CPU ops.
         run: python setup.py bdist_wheel
 
-      - name: Verify wheel (Unix)
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          pip install dist/*.whl
-          # Run outside the repo so `mmcv` imports the installed wheel.
-          cd "$RUNNER_TEMP"
-          python "$GITHUB_WORKSPACE/.dev_scripts/check_installation.py"
-
-      - name: Verify wheel (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $whl = (Get-ChildItem "$env:GITHUB_WORKSPACE\dist\*.whl")[0].FullName
-          pip install $whl
-          cd $env:RUNNER_TEMP
-          python "$env:GITHUB_WORKSPACE\.dev_scripts\check_installation.py"
+      # Static check (no import): assert the compiled mmcv/_ext.(so|pyd) is in
+      # the wheel. cwd is the workspace, so the relative path works in both the
+      # pwsh (Windows) and bash (Linux/macOS) default shells.
+      - name: Verify extension built
+        run: python .github/scripts/check_wheel_ext.py dist
 
       - uses: actions/upload-artifact@v4
         with:
