@@ -9,6 +9,10 @@ name: build wheels
 # CUDA the matrix torch was built against) and cross-compile with nvcc, so no GPU
 # and no system CUDA install are needed. This mirrors the reliable conda-based
 # approach used by https://github.com/cjaverliat/sam2.
+#
+# Windows note: builds run in pwsh, NOT Git bash. Git bash's login profile
+# prepends /usr/bin, whose coreutils `link.exe` shadows MSVC's linker and breaks
+# the extension link step ("/usr/bin/link: extra operand '/LTCG'").
 
 on:
   release:
@@ -66,10 +70,6 @@ jobs:
             cuda_tag: cu128
     env:
       FORCE_CUDA: '1'
-    defaults:
-      run:
-        # Activate the micromamba env for every step (nvcc, python, torch on PATH).
-        shell: bash -el {0}
     steps:
       - uses: actions/checkout@v4
 
@@ -108,7 +108,10 @@ jobs:
             libcusolver-dev
             ninja
 
-      - name: Install PyTorch (${{ matrix.cuda_tag }}) + build deps
+      # ---- Linux: micromamba login bash activates the env ----
+      - name: Install PyTorch + build deps (Linux)
+        if: runner.os == 'Linux'
+        shell: bash -el {0}
         run: |
           python -m pip install --upgrade pip
           pip install wheel setuptools psutil numpy
@@ -116,19 +119,34 @@ jobs:
             --index-url https://download.pytorch.org/whl/${{ matrix.cuda_tag }} \
             --no-cache-dir
 
-      - name: Build wheel
+      - name: Build wheel (Linux)
+        if: runner.os == 'Linux'
+        shell: bash -el {0}
         run: |
-          # torch.utils.cpp_extension resolves nvcc via CUDA_HOME. Point it at the
-          # conda env (its Library subdir on Windows).
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            export CUDA_HOME="$CONDA_PREFIX/Library"
-          else
-            export CUDA_HOME="$CONDA_PREFIX"
-          fi
-          echo "CUDA_HOME=$CUDA_HOME"
+          export CUDA_HOME="$CONDA_PREFIX"
           nvcc --version
           python setup.py bdist_wheel
           ls -la dist/
+
+      # ---- Windows: pwsh + `micromamba run` (avoids Git bash's link.exe) ----
+      - name: Install PyTorch + build deps (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          micromamba run -n build python -m pip install --upgrade pip
+          micromamba run -n build pip install wheel setuptools psutil numpy
+          micromamba run -n build pip install torch==${{ matrix.torch }} --index-url https://download.pytorch.org/whl/${{ matrix.cuda_tag }} --no-cache-dir
+
+      - name: Build wheel (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $prefix = (micromamba run -n build python -c "import os,sys; sys.stdout.write(os.environ['CONDA_PREFIX'])").Trim()
+          $env:CUDA_HOME = "$prefix\Library"
+          Write-Host "CUDA_HOME=$env:CUDA_HOME"
+          micromamba run -n build nvcc --version
+          micromamba run -n build python setup.py bdist_wheel
+          Get-ChildItem dist
 
       - uses: actions/upload-artifact@v4
         with:
@@ -141,7 +159,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-14]
+        # windows-2022 for a stable MSVC; macos-14 is arm64 (MPS-capable torch).
+        os: [ubuntu-latest, windows-2022, macos-14]
         python-version: ['3.10', '3.11', '3.12']
         torch: ['2.6.0', '2.7.0', '2.8.0', '2.9.0']
     env:
@@ -160,21 +179,18 @@ jobs:
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
 
+      # No `shell:` override -> per-OS default (pwsh on Windows, bash elsewhere).
+      # pwsh keeps MSVC's link.exe ahead of Git bash's coreutils link. Commands
+      # are one-per-line so they parse in both pwsh and bash.
       - name: Install PyTorch (cpu) + build deps
-        shell: bash
         run: |
           python -m pip install --upgrade pip
           pip install wheel setuptools psutil numpy
-          pip install torch==${{ matrix.torch }} \
-            --index-url https://download.pytorch.org/whl/cpu \
-            --no-cache-dir
+          pip install torch==${{ matrix.torch }} --index-url https://download.pytorch.org/whl/cpu --no-cache-dir
 
       - name: Build wheel
         # macOS arm64 torch is MPS-capable -> setup.py compiles the MPS/CPU ops.
-        shell: bash
-        run: |
-          python setup.py bdist_wheel
-          ls -la dist/
+        run: python setup.py bdist_wheel
 
       - uses: actions/upload-artifact@v4
         with:
