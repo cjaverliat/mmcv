@@ -22,11 +22,11 @@ A distributed wheel carries a PEP440 local label describing its build, e.g.
 
 Environment toggles:
 
-| variable | effect |
-| --- | --- |
-| `MMCV_FORCE_BUILD=1` | skip the prebuilt-wheel download, always compile |
-| `MMCV_WHEEL_BASE_URL=...` | override the release-asset URL template |
-| `MMCV_WHEEL_REPO=owner/repo` | override the GitHub repo hosting the releases |
+| variable                     | effect                                           |
+| ---------------------------- | ------------------------------------------------ |
+| `MMCV_FORCE_BUILD=1`         | skip the prebuilt-wheel download, always compile |
+| `MMCV_WHEEL_BASE_URL=...`    | override the release-asset URL template          |
+| `MMCV_WHEEL_REPO=owner/repo` | override the GitHub repo hosting the releases    |
 
 The wheels themselves are produced by the `build wheels` GitHub Actions workflow
 (`.github/workflows/build_wheels.yml`) across recent CUDA and torch versions and

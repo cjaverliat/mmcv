@@ -5,9 +5,10 @@ import re
 import sys
 import urllib.error
 import urllib.request
-from importlib.metadata import distribution, PackageNotFoundError
-from packaging.version import parse as parse_version
+from importlib.metadata import PackageNotFoundError, distribution
 from setuptools import find_packages, setup
+
+from packaging.version import parse as parse_version
 
 # ---------------------------------------------------------------------------
 # flash-attn-style prebuilt wheel selection.
@@ -22,11 +23,13 @@ from setuptools import find_packages, setup
 #   MMCV_WHEEL_BASE_URL=...  override the release-asset URL template
 #   MMCV_WHEEL_REPO=owner/repo  override the GitHub repo hosting the releases
 # ---------------------------------------------------------------------------
-PACKAGE_NAME = 'mmcv' if os.getenv('MMCV_WITH_OPS', '1') == '1' else 'mmcv-lite'
+PACKAGE_NAME = 'mmcv' \
+    if os.getenv('MMCV_WITH_OPS', '1') == '1' else 'mmcv-lite'
 GH_OWNER_REPO = os.getenv('MMCV_WHEEL_REPO', 'cjaverliat/mmcv')
 BASE_WHEEL_URL = os.getenv(
     'MMCV_WHEEL_BASE_URL',
-    'https://github.com/{owner_repo}/releases/download/v{version}/{wheel_name}')
+    'https://github.com/{owner_repo}/releases/download/v{version}'
+    '/{wheel_name}')
 FORCE_BUILD = os.getenv('MMCV_FORCE_BUILD', '0') == '1'
 
 EXT_TYPE = ''
@@ -517,8 +520,8 @@ def get_platform_tag():
     if sys.platform == 'win32':
         return 'win_amd64'
     if sys.platform == 'darwin':
-        # Pin the deployment target in CI (MACOSX_DEPLOYMENT_TARGET=11.0) so the
-        # emitted tag matches this reconstruction.
+        # Pin the deployment target in CI (MACOSX_DEPLOYMENT_TARGET=11.0)
+        # so the emitted tag matches this reconstruction.
         machine = platform.uname().machine
         return 'macosx_11_0_arm64' if machine == 'arm64' \
             else 'macosx_10_9_x86_64'
@@ -538,13 +541,14 @@ def get_torch_tag(torch):
 
 
 def get_cxx_abi_tag(torch):
-    # Linux torch ships two C++ ABIs; a mismatched ABI = unimportable extension.
+    # Linux torch ships two C++ ABIs; a mismatched ABI = unimportable ext.
     return 'cxx11abitrue' if torch._C._GLIBCXX_USE_CXX11_ABI \
         else 'cxx11abifalse'
 
 
 def get_local_label(torch):
-    """PEP440 local version label, e.g. cu124torch26cxx11abitrue (lowercased)."""
+    """PEP440 local version label, e.g. cu124torch26cxx11abitrue
+    (lowercased)."""
     label = f'{get_cuda_tag(torch)}{get_torch_tag(torch)}'
     if sys.platform.startswith('linux'):
         label += get_cxx_abi_tag(torch)
@@ -556,15 +560,16 @@ def get_python_tag():
 
 
 def get_wheel_filename(name, version, local_label):
-    # Normalized (pip-emitted) filename for this build. pip normalizes '-' in the
-    # dist name to '_' and lowercases the local label (already lowercased here).
+    # Normalized (pip-emitted) filename for this build. pip normalizes '-'
+    # in the dist name to '_' and lowercases the local label (already lower).
     py = get_python_tag()
     dist = name.replace('-', '_')
     return (f'{dist}-{version}+{local_label}-{py}-{py}-'
             f'{get_platform_tag()}.whl')
 
 
-# The local version label (+cuXXXtorchYY) is applied only to DISTRIBUTED wheels:
+# The local version label (+cuXXXtorchYY) is applied only to DISTRIBUTED
+# wheels:
 # a real `bdist_wheel`/`build`. sdist and editable/dev installs stay label-free
 # and torch-loose so a source checkout is not pinned to one torch line.
 _DIST_WHEEL_BUILD = 'bdist_wheel' in sys.argv or 'build' in sys.argv
@@ -576,14 +581,14 @@ if EXT_TYPE == 'pytorch' and PACKAGE_NAME == 'mmcv' and _DIST_WHEEL_BUILD:
     # against so a mismatched torch errors at install time rather than crashing
     # on import of a binary-incompatible mmcv._ext.
     tv = torch.__version__.split('+')[0].split('.')[:2]
-    install_requires.append(f"torch=={tv[0]}.{tv[1]}.*")
+    install_requires.append(f'torch=={tv[0]}.{tv[1]}.*')
 
     if not FORCE_BUILD:
         try:
-            from setuptools.command.bdist_wheel import \
-                bdist_wheel as _bdist_wheel
+            from setuptools.command.bdist_wheel import bdist_wheel
         except ImportError:  # setuptools < 70 / older wheel
-            from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
+            from wheel.bdist_wheel import bdist_wheel  # type: ignore[no-redef]
+        _bdist_wheel = bdist_wheel
 
         class CachedWheelsCommand(_bdist_wheel):
             """Try a prebuilt GitHub Releases wheel before compiling."""
@@ -640,10 +645,10 @@ setup(
     author_email='openmmlab@gmail.com',
     install_requires=install_requires,
     setup_requires=[
-        "numpy",
-        "torch"
+        'numpy',
+        'torch'
     ],
-    extras_require={
+    extras_require={  # type: ignore[arg-type]
         'all': parse_requirements('requirements.txt'),
         'tests': parse_requirements('requirements/test.txt'),
         'build': parse_requirements('requirements/build.txt'),
@@ -651,5 +656,5 @@ setup(
     },
     python_requires='>=3.7',
     ext_modules=get_extensions(),
-    cmdclass=cmd_class,
+    cmdclass=cmd_class,  # type: ignore[arg-type]
     zip_safe=False)
