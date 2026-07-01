@@ -2,9 +2,32 @@ import glob
 import os
 import platform
 import re
+import sys
+import urllib.error
+import urllib.request
 from importlib.metadata import distribution, PackageNotFoundError
 from packaging.version import parse as parse_version
 from setuptools import find_packages, setup
+
+# ---------------------------------------------------------------------------
+# flash-attn-style prebuilt wheel selection.
+#
+# At `pip install` / `bdist_wheel` time we first try to download a prebuilt
+# wheel matching the user's exact (torch, CUDA, python, platform, C++ ABI)
+# from GitHub Releases. If none matches we fall back to compiling from source.
+# Inspired by https://github.com/cjaverliat/sam2.
+#
+# Environment toggles:
+#   MMCV_FORCE_BUILD=1       skip the prebuilt-wheel download, always compile
+#   MMCV_WHEEL_BASE_URL=...  override the release-asset URL template
+#   MMCV_WHEEL_REPO=owner/repo  override the GitHub repo hosting the releases
+# ---------------------------------------------------------------------------
+PACKAGE_NAME = 'mmcv' if os.getenv('MMCV_WITH_OPS', '1') == '1' else 'mmcv-lite'
+GH_OWNER_REPO = os.getenv('MMCV_WHEEL_REPO', 'cjaverliat/mmcv')
+BASE_WHEEL_URL = os.getenv(
+    'MMCV_WHEEL_BASE_URL',
+    'https://github.com/{owner_repo}/releases/download/v{version}/{wheel_name}')
+FORCE_BUILD = os.getenv('MMCV_FORCE_BUILD', '0') == '1'
 
 EXT_TYPE = ''
 try:
@@ -481,9 +504,122 @@ def get_extensions():
     return extensions
 
 
+# ---------------------------------------------------------------------------
+# Build-environment fingerprint (torch / CUDA / python / platform / C++ ABI).
+# These compose both the wheel's PEP440 local version label and the prebuilt
+# wheel filename we look for on GitHub Releases. Keep the two in lock-step: the
+# same setup.py both names the wheel at CI build time and reconstructs the name
+# to download it at user install time.
+# ---------------------------------------------------------------------------
+def get_platform_tag():
+    if sys.platform.startswith('linux'):
+        return f'linux_{platform.uname().machine}'  # e.g. linux_x86_64
+    if sys.platform == 'win32':
+        return 'win_amd64'
+    if sys.platform == 'darwin':
+        # Pin the deployment target in CI (MACOSX_DEPLOYMENT_TARGET=11.0) so the
+        # emitted tag matches this reconstruction.
+        machine = platform.uname().machine
+        return 'macosx_11_0_arm64' if machine == 'arm64' \
+            else 'macosx_10_9_x86_64'
+    raise RuntimeError(f'Unsupported platform: {sys.platform}')
+
+
+def get_cuda_tag(torch):
+    # '12.4' -> 'cu124'. 'cpu' when torch is a CPU build.
+    cuda = getattr(torch.version, 'cuda', None)
+    return f"cu{cuda.replace('.', '')}" if cuda else 'cpu'
+
+
+def get_torch_tag(torch):
+    # '2.8.0+cu128' -> 'torch28'
+    major, minor = torch.__version__.split('+')[0].split('.')[:2]
+    return f'torch{major}{minor}'
+
+
+def get_cxx_abi_tag(torch):
+    # Linux torch ships two C++ ABIs; a mismatched ABI = unimportable extension.
+    return 'cxx11abitrue' if torch._C._GLIBCXX_USE_CXX11_ABI \
+        else 'cxx11abifalse'
+
+
+def get_local_label(torch):
+    """PEP440 local version label, e.g. cu124torch26cxx11abitrue (lowercased)."""
+    label = f'{get_cuda_tag(torch)}{get_torch_tag(torch)}'
+    if sys.platform.startswith('linux'):
+        label += get_cxx_abi_tag(torch)
+    return label.lower()
+
+
+def get_python_tag():
+    return f'cp{sys.version_info.major}{sys.version_info.minor}'
+
+
+def get_wheel_filename(name, version, local_label):
+    # Normalized (pip-emitted) filename for this build. pip normalizes '-' in the
+    # dist name to '_' and lowercases the local label (already lowercased here).
+    py = get_python_tag()
+    dist = name.replace('-', '_')
+    return (f'{dist}-{version}+{local_label}-{py}-{py}-'
+            f'{get_platform_tag()}.whl')
+
+
+# The local version label (+cuXXXtorchYY) is applied only to DISTRIBUTED wheels:
+# a real `bdist_wheel`/`build`. sdist and editable/dev installs stay label-free
+# and torch-loose so a source checkout is not pinned to one torch line.
+_DIST_WHEEL_BUILD = 'bdist_wheel' in sys.argv or 'build' in sys.argv
+
+local_label = None
+if EXT_TYPE == 'pytorch' and PACKAGE_NAME == 'mmcv' and _DIST_WHEEL_BUILD:
+    local_label = get_local_label(torch)
+    # ABI lock: a distributed wheel pins torch to the exact minor it was built
+    # against so a mismatched torch errors at install time rather than crashing
+    # on import of a binary-incompatible mmcv._ext.
+    tv = torch.__version__.split('+')[0].split('.')[:2]
+    install_requires.append(f"torch=={tv[0]}.{tv[1]}.*")
+
+    if not FORCE_BUILD:
+        try:
+            from setuptools.command.bdist_wheel import \
+                bdist_wheel as _bdist_wheel
+        except ImportError:  # setuptools < 70 / older wheel
+            from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
+
+        class CachedWheelsCommand(_bdist_wheel):
+            """Try a prebuilt GitHub Releases wheel before compiling."""
+
+            def run(self):
+                wheel_name = get_wheel_filename(PACKAGE_NAME, get_version(),
+                                                local_label)
+                url = BASE_WHEEL_URL.format(
+                    owner_repo=GH_OWNER_REPO,
+                    version=get_version(),
+                    wheel_name=wheel_name)
+                try:
+                    os.makedirs(self.dist_dir, exist_ok=True)
+                    impl_tag, abi_tag, plat_tag = self.get_tag()
+                    dest = os.path.join(
+                        self.dist_dir,
+                        f'{self.wheel_dist_name}-{impl_tag}-{abi_tag}-'
+                        f'{plat_tag}.whl')
+                    print(f'mmcv: fetching prebuilt wheel\n  {url}')
+                    urllib.request.urlretrieve(url, dest)
+                    print(f'mmcv: using prebuilt wheel -> {dest}')
+                except (urllib.error.HTTPError, urllib.error.URLError) as e:
+                    print(f'mmcv: no matching prebuilt wheel ({e}); '
+                          'building from source.')
+                    super().run()
+
+        cmd_class['bdist_wheel'] = CachedWheelsCommand
+
+# PEP440 local version label distinguishes one torch/CUDA build from another on
+# the same upstream version (2.3.0+cu124torch26cxx11abitrue).
+full_version = get_version() if local_label is None \
+    else f'{get_version()}+{local_label}'
+
 setup(
-    name='mmcv' if os.getenv('MMCV_WITH_OPS', '1') == '1' else 'mmcv-lite',
-    version=get_version(),
+    name=PACKAGE_NAME,
+    version=full_version,
     description='OpenMMLab Computer Vision Foundation',
     keywords='computer vision',
     packages=find_packages(),

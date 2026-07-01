@@ -1,3 +1,37 @@
+## Install a prebuilt wheel (flash-attn style)
+
+`mmcv` uses a flash-attn-style build backend: at install time `setup.py` inspects
+your **installed** PyTorch (CUDA vs CPU, torch version, python, platform, and — on
+Linux — the C++ ABI) and first tries to download the matching prebuilt wheel from
+the [GitHub Releases](https://github.com/cjaverliat/mmcv/releases) page. If no
+matching wheel exists it falls back to compiling from source.
+
+Because the wheel is selected from the *installed* torch, install torch first and
+disable build isolation so `setup.py` can see it:
+
+```bash
+# 1. install the torch build you want (CUDA or CPU)
+pip install torch --index-url https://download.pytorch.org/whl/cu124
+# 2. install mmcv without build isolation -> prebuilt wheel or source build
+pip install mmcv --no-build-isolation
+```
+
+A distributed wheel carries a PEP440 local label describing its build, e.g.
+`mmcv-2.3.0+cu124torch26cxx11abitrue-cp311-cp311-linux_x86_64.whl`, and pins
+`torch==2.6.*` so a mismatched torch is rejected at install time.
+
+Environment toggles:
+
+| variable | effect |
+| --- | --- |
+| `MMCV_FORCE_BUILD=1` | skip the prebuilt-wheel download, always compile |
+| `MMCV_WHEEL_BASE_URL=...` | override the release-asset URL template |
+| `MMCV_WHEEL_REPO=owner/repo` | override the GitHub repo hosting the releases |
+
+The wheels themselves are produced by the `build wheels` GitHub Actions workflow
+(`.github/workflows/build_wheels.yml`) across recent CUDA and torch versions and
+attached to the release when a `v*` tag is pushed.
+
 ## Build MMCV from source
 
 ### Build mmcv
