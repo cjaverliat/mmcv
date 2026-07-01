@@ -104,6 +104,15 @@ jobs:
             libcusolver-dev
             ninja
 
+      # sccache object cache (Linux CUDA only). Backed by the GitHub Actions
+      # cache, so nvcc/host object files persist across runs -> re-running the
+      # same matrix cell is near-instant. Windows/macOS are skipped: MSVC cl and
+      # the absolute-path nvcc there can't be wrapped without renaming toolchain
+      # binaries, which is fragile for little gain.
+      - name: Set up sccache (Linux)
+        if: runner.os == 'Linux'
+        uses: mozilla-actions/sccache-action@v0.0.6
+
       # ---- Linux: micromamba login bash activates the env ----
       - name: Install PyTorch + build deps (Linux)
         if: runner.os == 'Linux'
@@ -118,10 +127,27 @@ jobs:
       - name: Build wheel (Linux)
         if: runner.os == 'Linux'
         shell: bash -el {0}
+        env:
+          SCCACHE_GHA_ENABLED: 'true'
         run: |
           export CUDA_HOME="$CONDA_PREFIX"
+          # Route nvcc and the host C/C++ compiler through sccache. torch resolves
+          # nvcc as $CUDA_HOME/bin/nvcc (absolute), so wrap that binary in-place;
+          # host .cpp compiles go through CC/CXX.
+          if command -v sccache >/dev/null 2>&1; then
+            NVCC="$CONDA_PREFIX/bin/nvcc"
+            if [ -f "$NVCC" ] && [ ! -f "$NVCC.real" ]; then
+              mv "$NVCC" "$NVCC.real"
+              printf '#!/usr/bin/env bash\nexec sccache "%s" "$@"\n' "$NVCC.real" > "$NVCC"
+              chmod +x "$NVCC"
+            fi
+            export CC="sccache ${CC:-cc}"
+            export CXX="sccache ${CXX:-c++}"
+          fi
           nvcc --version
+          sccache --show-stats || true
           python setup.py bdist_wheel
+          sccache --show-stats || true
           ls -la dist/
 
       - name: Verify extension built (Linux)
