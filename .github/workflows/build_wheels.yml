@@ -141,8 +141,10 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $prefix = (micromamba run -n build python -c "import os,sys; sys.stdout.write(os.environ['CONDA_PREFIX'])").Trim()
-          $env:CUDA_HOME = "$prefix\Library"
+          # Deterministic env prefix (capturing CONDA_PREFIX via stdout is
+          # polluted by Windows conda-activation batch echo). On win-64 the CUDA
+          # toolkit lives under the env's Library dir.
+          $env:CUDA_HOME = "$env:MAMBA_ROOT_PREFIX\envs\build\Library"
           Write-Host "CUDA_HOME=$env:CUDA_HOME"
           micromamba run -n build nvcc --version
           micromamba run -n build python setup.py bdist_wheel
