@@ -1,5 +1,8 @@
 #include <cuda_runtime_api.h>
-#include <torch/script.h>
+// <torch/types.h> not <torch/script.h>: script.h pulls torch JIT/dynamo
+// (compiled_autograd.h), which breaks nvcc/MSVC on torch>2.8 (pytorch#173232).
+// Only ATen tensor ops (torch:: == at::) are used here.
+#include <torch/types.h>
 // clang-format off
 // TODO: make spconv_utils.h order agnostic
 #include "../spconv_utils.h"

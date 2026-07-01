@@ -1,0 +1,53 @@
+name: verify torch29 win
+
+# TEMPORARY single-combo build to verify the spconv torch/script.h -> torch/types.h
+# fix lets torch 2.9 build on Windows CUDA (pytorch#173232 C2872). Delete after.
+
+on:
+  push:
+    branches:
+      - fix/torch29-win-spconv
+  workflow_dispatch:
+
+env:
+  MMCV_FORCE_BUILD: '1'
+  MMCV_WITH_OPS: '1'
+  FORCE_CUDA: '1'
+  TORCH_CUDA_ARCH_LIST: '7.5 8.0 8.6 8.9 9.0+PTX'
+  DISTUTILS_USE_SDK: '1'
+
+jobs:
+  verify:
+    name: torch2.9 cu128 py3.11 windows-2022
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ilammy/msvc-dev-cmd@v1
+      - uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-name: build
+          condarc: |
+            channels:
+              - conda-forge
+          create-args: >-
+            python=3.11
+            cuda-version=12.8
+            cuda-nvcc=12.8
+            cuda-cudart-dev=12.8
+            cuda-cccl=12.8
+            libcublas-dev
+            libcusparse-dev
+            libcusolver-dev
+            ninja
+      - name: Install PyTorch + build deps
+        shell: pwsh
+        run: |
+          micromamba run -n build python -m pip install --upgrade pip
+          micromamba run -n build pip install wheel setuptools psutil numpy
+          micromamba run -n build pip install torch==2.9.0 --index-url https://download.pytorch.org/whl/cu128 --no-cache-dir
+      - name: Build wheel
+        shell: pwsh
+        run: |
+          $env:CUDA_HOME = "$env:MAMBA_ROOT_PREFIX\envs\build\Library"
+          micromamba run -n build python setup.py bdist_wheel
+          Get-ChildItem dist
