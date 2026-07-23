@@ -109,6 +109,14 @@ jobs:
             libcusolver-dev
             ninja
 
+      # CUDA 12.8 nvcc rejects host gcc >=14 (host_config.h version cap). conda-forge
+      # otherwise pulls gcc 14.x as the default host compiler, so pin it below 14.
+      # Each step is a fresh login shell, so build's activation re-reads this gxx.
+      - name: Pin host compiler <14 for nvcc (Linux)
+        if: runner.os == 'Linux'
+        shell: bash -el {0}
+        run: micromamba install -n build -y -c conda-forge 'gxx_linux-64<14'
+
       # ---- Linux: micromamba login bash activates the env ----
       - name: Install PyTorch + build deps (Linux)
         if: runner.os == 'Linux'
